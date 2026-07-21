@@ -3,3 +3,4 @@ avengers_lab.db
 .DS_Store
 *.log
 .env
+.vercel
