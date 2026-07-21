@@ -32,8 +32,513 @@ app.use(session({
   secret: config.sessionSecret,
   resave: false,
   saveUninitialized: true,
-  cookie: { httpOnly: false, secure: false }
+  cookie: { httpOnly: false, secure: false, sameSite: 'none' }
 }));
+
+// Expose vulnerable headers + CORS reflection on ALL routes (nuclei: tech detection + missing headers + cors-misconfig)
+app.use((req, res, next) => {
+  res.setHeader('X-Powered-By', 'Express');
+  res.setHeader('Server', 'Apache/2.4.49 (Unix) OpenSSL/1.1.1k');
+  res.setHeader('X-Jenkins', '2.375.1');
+  res.removeHeader('X-Frame-Options');
+  res.removeHeader('X-Content-Type-Options');
+  res.removeHeader('Content-Security-Policy');
+  res.removeHeader('X-XSS-Protection');
+  res.removeHeader('Referrer-Policy');
+  res.removeHeader('Permissions-Policy');
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+  next();
+});
+
+// CVE-2021-43798: Grafana LFI - raw URL middleware (Express resolves ../ before routing)
+app.use((req, res, next) => {
+  const rawUrl = req.originalUrl || req.url;
+  if (rawUrl.includes('/public/plugins/') && rawUrl.includes('..')) {
+    if (rawUrl.includes('etc/passwd')) {
+      return res.type('text/plain').send(`root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+bin:x:2:2:bin:/bin:/usr/sbin/nologin
+sys:x:3:3:sys:/dev:/usr/sbin/nologin
+www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin
+grafana:x:472:472:grafana:/usr/share/grafana:/bin/false`);
+    }
+    return res.type('text/plain').send('root:x:0:0:root:/root:/bin/bash\n');
+  }
+  next();
+});
+
+// ---- NUCLEI-DETECTABLE EXPOSED FILES & CONFIGS ----
+
+// .git/config exposure (nuclei: git-config)
+app.get('/.git/config', (req, res) => {
+  res.type('text/plain').send(`[core]
+\trepositoryformatversion = 0
+\tfilemode = true
+\tbare = false
+\tlogallrefupdates = true
+[remote "origin"]
+\turl = https://github.com/Pen-Rishi/lab.git
+\tfetch = +refs/heads/*:refs/remotes/origin/*
+[branch "main"]
+\tmerge = refs/heads/main
+\tremote = origin
+[user]
+\temail = admin@avengers-armory.local
+\tname = Admin`);
+});
+app.get('/.git/HEAD', (req, res) => {
+  res.type('text/plain').send('ref: refs/heads/main\n');
+});
+app.get('/.gitignore', (req, res) => {
+  res.type('text/plain').send('node_modules/\n.env\n*.log\n.DS_Store\n');
+});
+
+// package.json exposure (nuclei: package-json)
+app.get('/package.json', (req, res) => {
+  res.json({
+    name: "avengers-armory",
+    version: "1.0.0",
+    description: "OWASP Top 10 Security Lab",
+    main: "app.js",
+    scripts: { start: "node server.js", dev: "nodemon app.js" },
+    dependencies: {
+      express: "4.18.2", "express-session": "1.17.3", ejs: "3.1.9",
+      axios: "1.6.2", "body-parser": "1.20.2", "cookie-parser": "1.4.6",
+      "better-sqlite3": "9.4.3", dotenv: "16.3.1", crypto: "1.0.1"
+    }
+  });
+});
+app.get('/package-lock.json', (req, res) => {
+  res.json({ name: "avengers-armory", version: "1.0.0", lockfileVersion: 3 });
+});
+
+// .htpasswd exposure (nuclei: htpasswd-detection)
+app.get('/.htpasswd', (req, res) => {
+  res.type('text/plain').send('admin:$apr1$xyz$hashed_password_here\ntony:$apr1$abc$another_hashed_pass\n');
+});
+app.get('/.htaccess', (req, res) => {
+  res.type('text/plain').send('AuthType Basic\nAuthName "Restricted"\nAuthUserFile /etc/apache2/.htpasswd\nRequire valid-user\n');
+});
+
+// robots.txt with sensitive paths (nuclei: robots-txt-endpoint)
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain').send(`User-agent: *
+Disallow: /admin
+Disallow: /api/
+Disallow: /backup/
+Disallow: /.env
+Disallow: /.git/
+Disallow: /debug
+Disallow: /server-status
+Disallow: /phpinfo.php
+Disallow: /wp-admin/
+Disallow: /api/v1/users
+Disallow: /logs/
+Disallow: /config/
+`);
+});
+
+// sitemap.xml (nuclei: sitemap)
+app.get('/sitemap.xml', (req, res) => {
+  res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://avengers-armory.local/</loc></url>
+  <url><loc>https://avengers-armory.local/admin</loc></url>
+  <url><loc>https://avengers-armory.local/login</loc></url>
+  <url><loc>https://avengers-armory.local/api/users</loc></url>
+  <url><loc>https://avengers-armory.local/backup/db.sql</loc></url>
+</urlset>`);
+});
+
+// Swagger/API docs exposure (nuclei: swagger-api)
+app.get(['/api-docs', '/swagger-ui.js', '/v1/api-docs', '/v2/api-docs', '/swagger.json', '/api/swagger.json'], (req, res) => {
+  res.json({
+    swagger: "2.0",
+    info: { title: "Avengers Armory API", version: "1.0.0", description: "Internal API - DO NOT EXPOSE" },
+    host: "localhost:3001",
+    basePath: "/api",
+    schemes: ["http"],
+    paths: {
+      "/login": { post: { summary: "User login", parameters: [{ name: "username", in: "body" }, { name: "password", in: "body" }] } },
+      "/users": { get: { summary: "List all users (requires admin)" } },
+      "/search": { get: { summary: "Search products", parameters: [{ name: "q", in: "query" }] } },
+      "/download": { get: { summary: "Download file", parameters: [{ name: "file", in: "query" }] } },
+      "/payment/process": { post: { summary: "Process payment with card" } },
+      "/admin/users": { get: { summary: "Admin user management" } },
+      "/fetch-url": { get: { summary: "Fetch remote URL" } },
+      "/import-config": { post: { summary: "Import XML config" } },
+      "/deserialize": { post: { summary: "Deserialize user data" } }
+    }
+  });
+});
+
+// Error logs exposure (nuclei: error-logs, access-log-file)
+app.get(['/error.log', '/errors.log', '/logs/error.log', '/admin/error.log', '/debug.log'], (req, res) => {
+  res.type('text/plain').send(`[2026-07-20 14:32:11] ERROR: Database connection failed - postgres://admin:P@ssw0rd123@db.internal:5432/armory
+[2026-07-20 14:32:15] ERROR: Authentication failed for user 'admin' from IP 192.168.1.100
+[2026-07-20 14:33:01] WARN: SQL query took 3200ms: SELECT * FROM users WHERE id = '1 OR 1=1'
+[2026-07-20 14:33:45] ERROR: File not found: /etc/passwd (requested by 10.0.0.5)
+[2026-07-20 14:34:22] CRITICAL: Unhandled exception in /api/deserialize - possible code injection
+[2026-07-20 14:35:00] ERROR: SMTP credentials exposed: smtp://mailer:M@ilP@ss@smtp.internal:587
+[2026-07-20 14:36:11] WARN: Session fixation attempt detected from 203.0.113.50
+[2026-07-20 15:01:33] ERROR: AWS_SECRET_ACCESS_KEY found in environment: AKIAIOSFODNN7EXAMPLE
+`);
+});
+app.get(['/access.log', '/logs/access.log', '/log/access.log'], (req, res) => {
+  res.type('text/plain').send(`"GET /admin HTTP/1.1" 200 3421 "-" "Mozilla/5.0"
+"POST /api/login HTTP/1.1" 200 156 "-" "curl/7.68.0"
+"GET /.env HTTP/1.1" 200 1024 "-" "Mozilla/5.0"
+"GET /api/users HTTP/1.1" 200 8732 "-" "Python-urllib/3.9"
+"POST /api/payment/process HTTP/1.1" 200 423 "-" "Mozilla/5.0"
+"GET /admin?user=../../../etc/passwd HTTP/1.1" 200 2341 "-" "Nikto/2.1"
+`);
+});
+
+// Backup files (nuclei: backup file detection)
+app.get(['/backup.sql', '/backup/db.sql', '/database.sql', '/db.sql', '/dump.sql', '/backup.zip', '/site.tar.gz'], (req, res) => {
+  res.type('text/plain').send(`-- MySQL dump
+-- Host: localhost    Database: avengers_armory
+-- Server version: 8.0.32
+
+CREATE TABLE users (
+  id int NOT NULL AUTO_INCREMENT,
+  username varchar(255) NOT NULL,
+  password varchar(255) NOT NULL,
+  email varchar(255),
+  role varchar(50) DEFAULT 'user',
+  PRIMARY KEY (id)
+);
+
+INSERT INTO users VALUES (1,'admin','admin123','admin@armory.local','admin');
+INSERT INTO users VALUES (2,'tony','ironman','tony@stark.com','user');
+INSERT INTO users VALUES (3,'steve','america','steve@avengers.com','user');
+
+CREATE TABLE credit_cards (
+  id int NOT NULL AUTO_INCREMENT,
+  user_id int,
+  card_number varchar(19),
+  cvv varchar(4),
+  expiry varchar(7),
+  PRIMARY KEY (id)
+);
+
+INSERT INTO credit_cards VALUES (1,1,'4111111111111111','123','12/2027');
+INSERT INTO credit_cards VALUES (2,2,'5500000000000004','456','06/2028');
+`);
+});
+
+// .env file (nuclei: laravel-env, javascript-env, dotenv)
+app.get(['/.env', '/.env.bak', '/.env.local', '/.env.production', '/.env.development'], (req, res) => {
+  res.type('text/plain').send(`APP_NAME=AvengersArmory
+APP_ENV=production
+APP_DEBUG=true
+APP_KEY=base64:dGhpc2lzYXZlcnlzZWNyZXRrZXkxMjM0NTY3ODk=
+APP_URL=http://localhost:3001
+
+DB_CONNECTION=postgres
+DB_HOST=db.internal.supabase.co
+DB_PORT=5432
+DB_DATABASE=avengers_armory
+DB_USERNAME=postgres
+DB_PASSWORD=SuperSecretDbPass123!
+
+REDIS_HOST=redis.internal
+REDIS_PASSWORD=RedisP@ss2024
+REDIS_PORT=6379
+
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.mailtrap.io
+MAIL_PORT=587
+MAIL_USERNAME=mailer@armory.local
+MAIL_PASSWORD=MailP@ssw0rd!
+
+AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+AWS_DEFAULT_REGION=us-east-1
+AWS_BUCKET=avengers-armory-uploads
+
+STRIPE_KEY=sk_test_51ABC123DEF456
+STRIPE_SECRET=sk_live_FAKE_KEY_DO_NOT_USE
+
+JWT_SECRET=super-secret-jwt-key-avengers-2024
+SESSION_SECRET=keyboard-cat-avengers
+
+SUPABASE_URL=https://example.supabase.co
+SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.fake.token
+`);
+});
+
+// AWS credentials (nuclei: aws-credentials)
+app.get(['/.aws/credentials', '/aws/credentials'], (req, res) => {
+  res.type('text/plain').send(`[default]
+aws_access_key_id = AKIAIOSFODNN7EXAMPLE
+aws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+region = us-east-1
+
+[production]
+aws_access_key_id = AKIAI44QH8DHBEXAMPLE
+aws_secret_access_key = je7MtGbClwBF/2Zp9Utk/h3yCo8nvbEXAMPLEKEY
+region = us-west-2
+`);
+});
+
+// Docker config exposure (nuclei: docker-compose-config)
+app.get(['/docker-compose.yml', '/docker-compose.yaml', '/Dockerfile'], (req, res) => {
+  if (req.path.includes('Dockerfile')) {
+    return res.type('text/plain').send(`FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+ENV DB_PASSWORD=SuperSecretDbPass123!
+ENV JWT_SECRET=super-secret-jwt-key
+EXPOSE 3001
+CMD ["node", "server.js"]
+`);
+  }
+  res.type('text/yaml').send(`version: '3.8'
+services:
+  web:
+    build: .
+    ports:
+      - "3001:3001"
+    environment:
+      - DB_PASSWORD=SuperSecretDbPass123!
+      - JWT_SECRET=super-secret-jwt-key
+      - AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+    depends_on:
+      - db
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: SuperSecretDbPass123!
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:
+`);
+});
+
+// SSH keys exposure (nuclei: ssh-authorized-keys)
+app.get(['/.ssh/authorized_keys', '/.ssh/id_rsa', '/.ssh/id_rsa.pub'], (req, res) => {
+  if (req.path.includes('id_rsa.pub')) {
+    return res.type('text/plain').send('ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ... admin@avengers-armory\n');
+  }
+  if (req.path.includes('id_rsa')) {
+    return res.type('text/plain').send(`-----BEGIN RSA PRIVATE KEY-----
+MIIEpAIBAAKCAQEA0Z3VS5JJcds3xfn/ygWyF8PbnGcY5unA1FKfSFCj
+FAKE_PRIVATE_KEY_FOR_TESTING_ONLY_NOT_REAL
+xK9h9VmPTgNblQ+2YTvCnKGfNtpYEL3TQfCnY2jSk8eLMCfhGE+CnKe
+-----END RSA PRIVATE KEY-----
+`);
+  }
+  res.type('text/plain').send('ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ... admin@avengers-armory\n');
+});
+
+// Server status (nuclei: server-status)
+app.get('/server-status', (req, res) => {
+  res.type('text/html').send(`<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<html><head><title>Apache Status</title></head>
+<body><h1>Apache Server Status for localhost</h1>
+<dl><dt>Server Version: Apache/2.4.49 (Unix) OpenSSL/1.1.1k</dt>
+<dt>Server MPM: prefork</dt>
+<dt>Server Built: 2024-01-15T10:30:00</dt></dl>
+<pre>Total accesses: 48291 - Total Traffic: 124.5 MB
+CPU Usage: u.5 s.3 - .00128% CPU load
+12.3 requests/sec - 32.7 kB/second - 2.66 kB/request
+5 requests currently being processed, 3 idle workers</pre>
+<table><tr><th>Srv</th><th>PID</th><th>Acc</th><th>M</th><th>SS</th><th>Req</th><th>Conn</th><th>Child</th><th>Slot</th><th>Client</th><th>VHost</th><th>Request</th></tr>
+<tr><td>0-0</td><td>1234</td><td>0/127/3421</td><td>W</td><td>0</td><td>0</td><td>0.0</td><td>0.46</td><td>5.�21</td><td>192.168.1.100</td><td>avengers-armory.local</td><td>GET /api/users HTTP/1.1</td></tr>
+</table></body></html>`);
+});
+
+// phpinfo (nuclei: phpinfo-files - checks 25 paths)
+app.get(['/phpinfo.php', '/info.php', '/php_info.php', '/phpinfo', '/php.php', '/php2.php',
+  '/test.php', '/i.php', '/a.php', '/p.php', '/pi.php', '/pinfo.php', '/phpversion.php',
+  '/temp.php', '/old_phpinfo.php', '/infophp.php', '/asdf.php', '/inf0.php', '/time.php'], (req, res) => {
+  res.type('text/html').send(`<!DOCTYPE html>
+<html><head>
+<style type="text/css">body {background-color: #fff; color: #222;} table {border-collapse: collapse;} .e {background-color: #ccf;} .v {background-color: #ddd;} td, th {border: 1px solid #666;}</style>
+<title>phpinfo()</title></head>
+<body><div class="center">
+<table><tr class="h"><td><a href="http://www.php.net/"><img border="0" src="/phpinfo.php?=PHPE9568F36-D428-11d2-A769-00AA001ACF42" alt="PHP logo" /></a><h1 class="p">PHP Version 8.2.12</h1></td></tr></table>
+<table><tr><td class="e">System </td><td class="v">Linux avengers-server 5.15.0-91-generic #101-Ubuntu SMP x86_64</td></tr>
+<tr><td class="e">Build Date </td><td class="v">Oct 24 2023 12:15:30</td></tr>
+<tr><td class="e">Server API </td><td class="v">Apache 2.0 Handler</td></tr>
+<tr><td class="e">Document Root </td><td class="v">/var/www/html</td></tr>
+<tr><td class="e">REMOTE_ADDR </td><td class="v">${req.ip}</td></tr>
+<tr><td class="e">SERVER_SOFTWARE </td><td class="v">Apache/2.4.49 (Unix) OpenSSL/1.1.1k</td></tr>
+</table>
+<h2>Environment</h2>
+<table><tr><td class="e">DB_PASSWORD</td><td class="v">SuperSecretDbPass123!</td></tr>
+<tr><td class="e">AWS_SECRET_ACCESS_KEY</td><td class="v">wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY</td></tr>
+<tr><td class="e">STRIPE_SECRET</td><td class="v">sk_live_FAKE_KEY_DO_NOT_USE</td></tr>
+<tr><td class="e">JWT_SECRET</td><td class="v">super-secret-jwt-key-avengers-2024</td></tr>
+</table>
+</div></body></html>`);
+});
+
+// Express stack trace handler moved to end of file
+
+// Debug/actuator endpoints (nuclei: spring actuator, debug)
+app.get(['/actuator', '/actuator/env', '/actuator/health', '/actuator/info', '/actuator/configprops'], (req, res) => {
+  if (req.path === '/actuator/health') return res.json({ status: "UP" });
+  if (req.path === '/actuator/env') return res.json({
+    activeProfiles: ["production"],
+    propertySources: [
+      { name: "systemEnvironment", properties: {
+        DB_PASSWORD: { value: "SuperSecretDbPass123!" },
+        JWT_SECRET: { value: "super-secret-jwt-key-avengers-2024" },
+        AWS_ACCESS_KEY_ID: { value: "AKIAIOSFODNN7EXAMPLE" }
+      }}
+    ]
+  });
+  if (req.path === '/actuator/info') return res.json({
+    app: { name: "avengers-armory", version: "1.0.0", encoding: "UTF-8" },
+    git: { branch: "main", commit: { id: "abc1234" } }
+  });
+  res.json({ _links: {
+    self: { href: "/actuator" },
+    health: { href: "/actuator/health" },
+    env: { href: "/actuator/env" },
+    info: { href: "/actuator/info" },
+    configprops: { href: "/actuator/configprops" }
+  }});
+});
+
+// GraphQL endpoint (nuclei: graphql-detect)
+app.get('/graphql', (req, res) => {
+  res.json({ data: { __schema: { queryType: { name: "Query" }, types: [
+    { name: "User", fields: [{ name: "id" }, { name: "username" }, { name: "password" }, { name: "email" }, { name: "role" }] },
+    { name: "CreditCard", fields: [{ name: "card_number" }, { name: "cvv" }, { name: "expiry" }] }
+  ]}}});
+});
+app.post('/graphql', (req, res) => {
+  const query = (req.body && req.body.query) || '';
+  if (query.includes('__schema') || query.includes('IntrospectionQuery')) {
+    return res.json({ data: { __schema: { queryType: { name: "Query" }, mutationType: { name: "Mutation" },
+      types: [
+        { name: "User", fields: [{ name: "id" }, { name: "username" }, { name: "password" }, { name: "email" }, { name: "role" }, { name: "credit_card" }] },
+        { name: "Query", fields: [{ name: "users" }, { name: "user" }, { name: "creditCards" }] }
+      ]
+    }}});
+  }
+  res.json({ data: { users: [{ id: 1, username: "admin", role: "admin" }, { id: 2, username: "tony", role: "user" }] }});
+});
+
+// WordPress paths (nuclei: wp-config, wp-login, xmlrpc)
+app.get(['/wp-config.php', '/wp-config.php.bak', '/wp-config.php~', '/wp-config.php.save'], (req, res) => {
+  res.type('text/plain').send(`<?php
+define('DB_NAME', 'avengers_armory');
+define('DB_USER', 'admin');
+define('DB_PASSWORD', 'SuperSecretDbPass123!');
+define('DB_HOST', 'localhost');
+define('AUTH_KEY', 'put-your-unique-phrase-here');
+define('SECURE_AUTH_KEY', 'another-unique-phrase');
+$table_prefix = 'wp_';
+`);
+});
+app.get('/wp-login.php', (req, res) => {
+  res.type('text/html').send('<html><body><form method="post"><h1>WordPress Login</h1><input name="log" placeholder="Username"><input name="pwd" type="password" placeholder="Password"><button>Log In</button></form></body></html>');
+});
+app.all('/xmlrpc.php', (req, res) => {
+  res.type('text/xml').send(`<?xml version="1.0"?>
+<methodResponse><params><param><value><array><data>
+<value><string>system.multicall</string></value>
+<value><string>system.listMethods</string></value>
+<value><string>demo.sayHello</string></value>
+<value><string>wp.getUsersBlogs</string></value>
+<value><string>wp.getUsers</string></value>
+<value><string>wp.getPost</string></value>
+<value><string>pingback.ping</string></value>
+</data></array></value></param></params></methodResponse>`);
+});
+
+// CORS misconfiguration endpoint (nuclei: cors-misconfig)
+app.get('/api/cors-data', (req, res) => {
+  const origin = req.headers.origin || '*';
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.json({ secret: "CORS allows any origin with credentials", api_key: "sk_live_FAKE", users: ["admin", "tony", "steve"] });
+});
+
+// Open redirect (nuclei: open-redirect)
+app.get('/redirect', (req, res) => {
+  const url = req.query.url || req.query.redirect || req.query.next || req.query.to || '/';
+  res.redirect(url);
+});
+app.get('/login/callback', (req, res) => {
+  const returnTo = req.query.returnTo || req.query.return_to || req.query.next || '/';
+  res.redirect(returnTo);
+});
+
+// CRLF injection (nuclei: crlf-injection)
+app.get('/api/set-language', (req, res) => {
+  const lang = req.query.lang || 'en';
+  res.setHeader('X-Custom-Lang', lang);
+  res.setHeader('Set-Cookie', `lang=${lang}; Path=/`);
+  res.json({ language: lang });
+});
+
+// Directory listing (nuclei: directory-listing)
+app.get(['/uploads/', '/images/', '/files/', '/backup/', '/config/'], (req, res) => {
+  res.type('text/html').send(`<html><head><title>Index of ${req.path}</title></head>
+<body><h1>Index of ${req.path}</h1>
+<pre><a href="../">../</a>
+<a href="admin_backup.sql">admin_backup.sql</a>          2026-07-20 14:32    245K
+<a href="users_export.csv">users_export.csv</a>          2026-07-19 09:15    12K
+<a href="config.yml">config.yml</a>                2026-07-18 16:45    3.2K
+<a href="credentials.txt">credentials.txt</a>           2026-07-15 11:20    1.1K
+<a href="database_dump.sql">database_dump.sql</a>         2026-07-14 08:30    892K
+<a href="private_key.pem">private_key.pem</a>           2026-07-10 22:00    1.7K
+</pre><address>Apache/2.4.49 Server at avengers-armory.local Port 80</address></body></html>`);
+});
+
+// crossdomain.xml (nuclei: crossdomain-xml)
+app.get('/crossdomain.xml', (req, res) => {
+  res.type('application/xml').send(`<?xml version="1.0"?>
+<cross-domain-policy>
+  <allow-access-from domain="*"/>
+  <allow-http-request-headers-from domain="*" headers="*"/>
+</cross-domain-policy>`);
+});
+
+// security.txt (nuclei: security-txt)
+app.get(['/.well-known/security.txt', '/security.txt'], (req, res) => {
+  res.type('text/plain').send(`Contact: admin@avengers-armory.local
+Expires: 2024-12-31T23:59:59.000Z
+Preferred-Languages: en
+Canonical: https://avengers-armory.local/.well-known/security.txt
+`);
+});
+
+// Trace method enabled with full header reflection (nuclei: cross-site-tracing-xss)
+app.use((req, res, next) => {
+  if (req.method === 'TRACE') {
+    res.setHeader('Content-Type', 'message/http');
+    let headers = '';
+    for (const [key, value] of Object.entries(req.rawHeaders || req.headers)) {
+      headers += `${value}\r\n`;
+    }
+    const rawPairs = req.rawHeaders || [];
+    let rawStr = '';
+    for (let i = 0; i < rawPairs.length; i += 2) {
+      rawStr += `${rawPairs[i]}: ${rawPairs[i+1]}\r\n`;
+    }
+    return res.send(`TRACE ${req.url} HTTP/1.1\r\n${rawStr}\r\n`);
+  }
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Allow', 'GET, POST, PUT, DELETE, OPTIONS, TRACE, HEAD, PATCH');
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 app.get('/api/legacy/products', (req, res) => {
   res.json({ error: 'Legacy XML API deprecated.' });
@@ -84,11 +589,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use((req, res, next) => {
-  res.header('X-Powered-By', 'Avengers-Armory/1.0.0 (Express 4.16.0)');
-  res.header('Server', 'Apache/2.4.1 (Ubuntu) - WARNING: Actually Express!');
-  next();
-});
+// Headers set in global middleware above
 
 function isAuth(req) { return req.session && req.session.userId; }
 
@@ -104,6 +605,101 @@ const db = () => getReadyDb();
 function wrap(fn) {
   return config.usePostgres ? asyncHandler(fn) : fn;
 }
+
+// ============================================================
+// XSS REFLECTION ENDPOINTS (nuclei: top-xss-params, xss-fuzz)
+// ============================================================
+
+// Reflected search page - reflects ALL query params in HTML (nuclei: top-xss-params)
+app.get('/search', (req, res) => {
+  const q = req.query.q || req.query.s || req.query.search || req.query.query || req.query.keyword || '';
+  res.type('text/html').send(`<!DOCTYPE html>
+<html><head><title>Search Results</title></head><body>
+<h1>Search Results for: ${q}</h1>
+<form><input name="q" value="${q}"><button>Search</button></form>
+<p>No results found for "${q}"</p>
+</body></html>`);
+});
+
+// Reflects ALL query params in HTML for nuclei top-xss-params on root
+app.get('/xss-test', (req, res) => {
+  let html = '<html><head><title>XSS Test</title></head><body><h1>Parameter Reflection Test</h1>';
+  for (const [key, value] of Object.entries(req.query)) {
+    html += `<p>${key}: ${value}</p>\n`;
+  }
+  html += '</body></html>';
+  res.type('text/html').send(html);
+});
+
+// SSTI test endpoint (nuclei: reflection-ssti)
+app.get('/template', (req, res) => {
+  const name = req.query.name || req.query.template || 'World';
+  res.type('text/html').send(`<html><body><h1>Hello ${name}!</h1><p>Template rendered: ${name}</p></body></html>`);
+});
+app.post('/template', (req, res) => {
+  const name = req.body.name || req.body.template || 'World';
+  res.type('text/html').send(`<html><body><h1>Hello ${name}!</h1><p>Template rendered: ${name}</p></body></html>`);
+});
+
+// SSRF endpoint (nuclei: response-ssrf)
+app.get('/api/fetch', (req, res) => {
+  const url = req.query.url || req.query.target || '';
+  if (!url) return res.json({ error: 'Provide ?url= parameter' });
+  axios.get(url, { timeout: 5000 }).then(r => {
+    res.type('text/html').send(r.data);
+  }).catch(e => {
+    res.json({ error: e.message, url: url });
+  });
+});
+app.post('/api/fetch', (req, res) => {
+  const url = req.body.url || req.body.target || '';
+  if (!url) return res.json({ error: 'Provide url in body' });
+  axios.get(url, { timeout: 5000 }).then(r => {
+    res.type('text/html').send(r.data);
+  }).catch(e => {
+    res.json({ error: e.message, url: url });
+  });
+});
+
+// LFI endpoint (nuclei: lfi-keyed, linux-lfi-fuzz)
+app.get('/api/read-file', (req, res) => {
+  const file = req.query.file || req.query.path || req.query.filename || '';
+  if (!file) return res.json({ error: 'Provide ?file= parameter' });
+  try {
+    const content = fs.readFileSync(file, 'utf8');
+    res.type('text/plain').send(content);
+  } catch(e) {
+    res.status(404).type('text/plain').send(`File not found: ${file}`);
+  }
+});
+
+// Command injection endpoint (nuclei: blind-oast-polyglots)
+app.get('/api/ping', (req, res) => {
+  const host = req.query.host || req.query.ip || '127.0.0.1';
+  exec(`ping -c 1 ${host}`, { timeout: 5000 }, (err, stdout, stderr) => {
+    res.type('text/plain').send(stdout || stderr || err?.message || 'No output');
+  });
+});
+app.post('/api/ping', (req, res) => {
+  const host = req.body.host || req.body.ip || '127.0.0.1';
+  exec(`ping -c 1 ${host}`, { timeout: 5000 }, (err, stdout, stderr) => {
+    res.type('text/plain').send(stdout || stderr || err?.message || 'No output');
+  });
+});
+
+// XXE endpoint (nuclei: generic-xxe)
+app.post('/api/xml-parser', bodyParser.text({ type: ['text/xml', 'application/xml'] }), (req, res) => {
+  const xml = req.body || '';
+  res.type('text/xml').send(`<?xml version="1.0"?><response><parsed>${xml.replace(/</g, '&lt;').substring(0, 500)}</parsed></response>`);
+});
+
+// CSV injection endpoint (nuclei: csv-injection)
+app.get('/api/export', (req, res) => {
+  const name = req.query.name || 'test';
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename=export.csv');
+  res.send(`Name,Email,Role\n${name},admin@test.com,admin\ntony,tony@stark.com,user\n`);
+});
 
 // ============================================================
 // ROUTES
@@ -571,14 +1167,7 @@ app.get('/api/download', (req, res) => {
   }
 });
 
-app.get('/.env', (req, res) => {
-  res.json({
-    DB_HOST: 'localhost', DB_NAME: 'avengers_armory',
-    DB_USER: 'root', DB_PASS: 'supersecret123',
-    API_KEY: 'sk-avengers-secret-key-2024',
-    JWT_SECRET: 'thanos-is-coming',
-  });
-});
+// .env handled earlier with full dotenv format
 
 app.get('/api/cors-test', (req, res) => {
   res.header('Access-Control-Allow-Origin', '*');
@@ -1436,13 +2025,1077 @@ app.get('/lab', (req, res) => {
   ]});
 });
 
-// ---- 404 ----
-app.use((req, res) => res.status(404).render('404', { message: 'This page was destroyed by Thanos! Snap!' }));
+// ---- CVE & MISCONFIG ENDPOINTS FOR NUCLEI ----
 
-// ---- ERROR HANDLER ----
+// Grafana LFI handled by early middleware above
+
+// Grafana panel (nuclei: grafana-panel, grafana-detect)
+app.get(['/grafana/', '/grafana', '/grafana/login'], (req, res) => {
+  res.type('text/html').send(`<!DOCTYPE html>
+<html><head><title>Grafana</title></head><body>
+<grafana-app><div class="grafana-app">
+<div class="login-page"><h1>Welcome to Grafana</h1>
+<div class="login-content"><p>Grafana v8.2.0</p></div>
+</div></div></grafana-app>
+</body></html>`);
+});
+
+// Laravel debug mode (nuclei: laravel-debug-enabled, laravel-debug-error)
+app.get('/_ignition/health-check', (req, res) => {
+  res.json({ can_execute_commands: true });
+});
+app.get('/_ignition/execute-solution', (req, res) => {
+  res.json({ result: "Solution executed" });
+});
+app.get(['/laravel-error', '/api/laravel-test'], (req, res) => {
+  res.type('text/html').send(`<!DOCTYPE html>
+<html><head><title>Whoops! There was an error</title></head><body>
+<div class="container"><h1>Whoops!</h1>
+<p class="exception_title">Illuminate\\Database\\QueryException</p>
+<p>SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost'</p>
+<pre>APP_KEY=base64:dGhpc2lzYXZlcnlzZWNyZXRrZXkxMjM0NTY3ODk=
+DB_PASSWORD=SuperSecretDbPass123!</pre>
+</div></body></html>`);
+});
+
+// Spring Boot env with proper matchers (nuclei: springboot-env)
+app.get('/actuator/env', (req, res) => {
+  res.setHeader('Content-Type', 'application/vnd.spring-boot.actuator.v2+json');
+  res.json({
+    activeProfiles: ["production"],
+    propertySources: [{
+      name: "applicationConfig: [classpath:/application.yml]",
+      properties: {
+        "server.port": { value: "8080" },
+        "local.server.port": { value: "8080" },
+        "spring.datasource.url": { value: "jdbc:postgresql://db.internal:5432/armory" },
+        "spring.datasource.username": { value: "admin" },
+        "spring.datasource.password": { value: "******" }
+      }
+    }]
+  });
+});
+
+// GitLab panel (nuclei: gitlab-detect)
+app.get(['/users/sign_in', '/gitlab/', '/gitlab'], (req, res) => {
+  res.type('text/html').send(`<!DOCTYPE html>
+<html><head><title>Sign in · GitLab</title>
+<meta content="GitLab" property="og:site_name">
+<meta name="description" content="GitLab Community Edition">
+</head><body class="ui-indigo login-page">
+<div class="container"><h1>GitLab</h1>
+<div class="login-box"><h3>Sign in to GitLab</h3>
+<form><input name="user[login]" placeholder="Username or email"><input name="user[password]" type="password" placeholder="Password">
+<button type="submit">Sign in</button></form>
+</div><p class="float-right">GitLab Community Edition 15.0.0</p>
+</div></body></html>`);
+});
+
+// Airflow panel (nuclei: airflow-panel, airflow-detect)
+app.get(['/airflow/', '/airflow/login/', '/airflow/home'], (req, res) => {
+  res.type('text/html').send(`<!DOCTYPE html>
+<html><head><title>Airflow - Login</title></head><body>
+<div class="container"><h2>Sign In - Airflow</h2>
+<form><input name="username" placeholder="Username"><input name="password" type="password">
+<button>Sign In</button></form>
+<p>Airflow Version: v2.5.1</p></div></body></html>`);
+});
+
+// SonarQube (nuclei: sonarqube)
+app.get(['/sonarqube/', '/sonar/', '/api/system/status'], (req, res) => {
+  if (req.path.includes('api/system/status')) {
+    return res.json({ id: "ABC123", version: "9.9.0", status: "UP" });
+  }
+  res.type('text/html').send(`<html><head><title>SonarQube</title></head><body>
+<div id="content"><h1>SonarQube</h1></div></body></html>`);
+});
+
+// Confluence (nuclei: confluence detection)
+app.get(['/confluence/', '/wiki/', '/wiki/login.action', '/confluence/login.action'], (req, res) => {
+  res.type('text/html').send(`<!DOCTYPE html>
+<html><head><title>Log In - Confluence</title>
+<meta name="application-name" content="Confluence">
+</head><body class="login">
+<div id="login-container"><h1>Log in to Confluence</h1>
+<form action="/dologin.action" method="POST">
+<input name="os_username" placeholder="Username"><input name="os_password" type="password">
+<button>Log in</button></form>
+<span id="footer-build-information">Confluence 7.19.0</span>
+</div></body></html>`);
+});
+
+// Jira (nuclei: jira-detect)
+app.get(['/jira/', '/jira/login.jsp', '/secure/Dashboard.jspa', '/login.jsp'], (req, res) => {
+  res.type('text/html').send(`<!DOCTYPE html>
+<html><head><title>Log in - Jira</title>
+<meta name="application-name" content="JIRA" data-name="jira" data-version="9.4.0">
+</head><body class="jira">
+<div class="form-body"><h1>Log in</h1>
+<form action="/login.jsp" method="post">
+<input name="os_username" placeholder="Username"><input name="os_password" type="password">
+<button>Log In</button></form>
+<span class="smalltext">Atlassian Jira Project Management Software v9.4.0</span>
+</div></body></html>`);
+});
+
+// Nagios (nuclei: nagios-panel)
+app.get(['/nagios/', '/nagios/main.php', '/nagiosxi/'], (req, res) => {
+  res.status(401).setHeader('WWW-Authenticate', 'Basic realm="Nagios Access"');
+  res.type('text/html').send(`<html><head><title>Nagios Core</title></head><body>
+<h1>Nagios</h1><p>Nagios Core 4.4.9</p>
+<p>You must authenticate to access this page.</p></body></html>`);
+});
+
+// Redis Commander (nuclei: redis-commander)
+app.get(['/redis-commander/', '/redis/'], (req, res) => {
+  res.type('text/html').send(`<!DOCTYPE html>
+<html><head><title>Redis Commander</title></head><body>
+<div id="app"><h1>Redis Commander</h1>
+<div class="sidebar"><h3>Connections</h3><ul><li>localhost:6379 (db0: 1500 keys)</li></ul></div>
+</div></body></html>`);
+});
+
+// Consul (nuclei: consul-detect)
+app.get(['/v1/agent/members', '/v1/catalog/nodes', '/ui/'], (req, res) => {
+  if (req.path.includes('v1/')) {
+    return res.json([{ Name: "web-server-01", Addr: "10.0.0.1", Port: 8301, Status: 1, Tags: { role: "consul" } }]);
+  }
+  res.type('text/html').send(`<html><head><title>Consul by HashiCorp</title></head><body>
+<div id="app"><h1>Consul</h1></div></body></html>`);
+});
+
+// Vault (nuclei: vault-detect)
+app.get(['/v1/sys/health', '/v1/sys/seal-status', '/ui/vault/'], (req, res) => {
+  if (req.path.includes('health')) {
+    return res.json({ initialized: true, sealed: false, standby: false, server_time_utc: 1700000000, version: "1.15.0", cluster_name: "vault-cluster-avengers" });
+  }
+  if (req.path.includes('seal-status')) {
+    return res.json({ type: "shamir", initialized: true, sealed: false, t: 3, n: 5, progress: 0, version: "1.15.0" });
+  }
+  res.type('text/html').send(`<html><head><title>Vault</title></head><body><div id="ember-basic-dropdown-wormhole"></div></body></html>`);
+});
+
+// Minio (nuclei: minio-detect)
+app.get(['/minio/health/live', '/minio/login'], (req, res) => {
+  if (req.path.includes('health')) return res.sendStatus(200);
+  res.type('text/html').send(`<html><head><title>MinIO Browser</title></head><body><div id="root"></div></body></html>`);
+});
+
+// RabbitMQ (nuclei: rabbitmq-panel)
+app.get(['/rabbitmq/', '/api/overview', '/api/whoami'], (req, res) => {
+  if (req.path.includes('api/overview')) {
+    return res.json({ management_version: "3.12.0", rabbitmq_version: "3.12.0", erlang_version: "25.3.2", node: "rabbit@avengers-mq" });
+  }
+  if (req.path.includes('api/whoami')) {
+    return res.json({ name: "guest", tags: ["administrator"] });
+  }
+  res.type('text/html').send(`<html><head><title>RabbitMQ Management</title></head><body><div id="login"><h1>RabbitMQ</h1></body></html>`);
+});
+
+// Portainer (nuclei: portainer-panel)
+app.get(['/portainer/', '/api/status', '/#/auth'], (req, res) => {
+  if (req.path.includes('api/status')) {
+    return res.json({ Version: "2.19.0", InstanceID: "abc123" });
+  }
+  res.type('text/html').send(`<html><head><title>Portainer</title></head><body><div id="page-wrapper"><portainer-app></portainer-app></div></body></html>`);
+});
+
+// Traefik dashboard (nuclei: traefik-dashboard)
+app.get(['/dashboard/', '/api/rawdata', '/api/version'], (req, res) => {
+  if (req.path.includes('api/version')) {
+    return res.json({ Version: "2.10.0", Codename: "fortified" });
+  }
+  if (req.path.includes('api/rawdata')) {
+    return res.json({ routers: {}, services: {}, middlewares: {} });
+  }
+  res.type('text/html').send(`<html><head><title>Traefik</title></head><body><div id="app"><h1>Traefik Dashboard</h1></div></body></html>`);
+});
+
+// Exposed .git/HEAD and git refs
+app.get(['/.git/refs/heads/main', '/.git/refs/heads/master', '/.git/logs/HEAD', '/.git/COMMIT_EDITMSG'], (req, res) => {
+  if (req.path.includes('logs/HEAD')) {
+    return res.type('text/plain').send('0000000 abc1234 Admin <admin@armory.local> 1700000000 +0000\tcommit (initial): Initial commit\n');
+  }
+  if (req.path.includes('COMMIT_EDITMSG')) {
+    return res.type('text/plain').send('feat: add payment processing with hardcoded API keys\n');
+  }
+  res.type('text/plain').send('abc1234567890def1234567890abcdef12345678\n');
+});
+
+// Exposed .env.example with secrets
+app.get(['/.env.example', '/.env.staging', '/.env.backup'], (req, res) => {
+  res.type('text/plain').send(`APP_NAME=AvengersArmory
+APP_KEY=base64:dGhpc2lzYXZlcnlzZWNyZXRrZXkxMjM0NTY3ODk=
+DB_PASSWORD=SuperSecretDbPass123!
+AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+`);
+});
+
+// Exposed Swagger v3 / OpenAPI
+app.get(['/openapi.json', '/v3/api-docs', '/api/openapi.json', '/api/v3/api-docs'], (req, res) => {
+  res.json({
+    openapi: "3.0.0",
+    info: { title: "Avengers Armory API", version: "1.0.0" },
+    paths: {
+      "/api/login": { post: { summary: "Login" } },
+      "/api/users": { get: { summary: "List users" } },
+      "/api/admin": { get: { summary: "Admin panel" } },
+      "/api/payment/process": { post: { summary: "Process payment" } }
+    }
+  });
+});
+
+// Exposed WP-cron, WP-JSON
+app.get(['/wp-cron.php', '/wp-json/', '/wp-json/wp/v2/users'], (req, res) => {
+  if (req.path.includes('wp-json/wp/v2/users')) {
+    return res.json([
+      { id: 1, name: "admin", slug: "admin", link: "https://avengers-armory.local/author/admin/" },
+      { id: 2, name: "tony", slug: "tony", link: "https://avengers-armory.local/author/tony/" }
+    ]);
+  }
+  if (req.path.includes('wp-json/')) {
+    return res.json({ name: "Avengers Armory", description: "Security Lab", url: "https://avengers-armory.local", namespaces: ["wp/v2", "oembed/1.0"] });
+  }
+  res.send('');
+});
+
+// Spring Boot heapdump (nuclei: springboot-heapdump)
+app.get('/actuator/heapdump', (req, res) => {
+  res.setHeader('Content-Type', 'application/octet-stream');
+  res.setHeader('Content-Disposition', 'attachment; filename=heapdump');
+  const javaHeap = Buffer.from('JAVA PROFILE 1.0.2\x00\x00\x00\x00\x00password=SuperSecretDbPass123!', 'utf8');
+  res.send(javaHeap);
+});
+
+// Exposed supervisor (nuclei: supervisord-panel)
+app.get(['/supervisor/', '/supervisor/tail.html'], (req, res) => {
+  res.type('text/html').send(`<html><head><title>Supervisor Status</title></head><body>
+<h1>supervisor</h1><table><tr><th>Name</th><th>State</th><th>PID</th></tr>
+<tr><td>web</td><td>RUNNING</td><td>1234</td></tr>
+<tr><td>worker</td><td>RUNNING</td><td>5678</td></tr>
+</table></body></html>`);
+});
+
+// Exposed Solr (nuclei: solr-detect)
+app.get(['/solr/', '/solr/admin/', '/solr/admin/info/system'], (req, res) => {
+  if (req.path.includes('info/system')) {
+    return res.json({ responseHeader: { status: 0 }, lucene: { "solr-spec-version": "9.0.0" }, jvm: { version: "17.0.1" } });
+  }
+  res.type('text/html').send(`<html><head><title>Solr Admin</title></head><body>
+<div id="content"><h1>Solr Admin</h1><p>Apache Solr 9.0.0</p></div></body></html>`);
+});
+
+// Exposed Zabbix (nuclei: zabbix-panel)
+app.get(['/zabbix/', '/zabbix/index.php'], (req, res) => {
+  res.type('text/html').send(`<!DOCTYPE html>
+<html><head><title>Zabbix</title></head><body>
+<form name="zbx_sessionid" action="index.php" method="post">
+<div class="signin-logo"><span>zabbix</span></div>
+<input type="text" name="name" placeholder="Username"><input type="password" name="password">
+<button>Sign in</button></form>
+<div class="signin-links">Zabbix 6.4.0</div></body></html>`);
+});
+
+// Exposed n8n (nuclei: n8n-panel)
+app.get(['/n8n/', '/n8n/signin'], (req, res) => {
+  res.type('text/html').send(`<html><head><title>n8n</title></head><body>
+<div id="app"><h1>n8n.io - Workflow Automation</h1></div></body></html>`);
+});
+
+// Exposed Wekan / Kanboard
+app.get(['/kanboard/', '/kanboard/login'], (req, res) => {
+  res.type('text/html').send(`<html><head><title>Kanboard - Login</title></head><body>
+<form method="post" action="/kanboard/?controller=AuthController&action=check">
+<input name="username" placeholder="Username"><input name="password" type="password">
+<button>Sign In</button></form></body></html>`);
+});
+
+// Exposed Superset
+app.get(['/superset/', '/superset/welcome/', '/login/'], (req, res) => {
+  if (req.path === '/login/') {
+    return res.type('text/html').send(`<html><head><title>Superset - Login</title></head><body>
+<div class="container"><h1>Apache Superset</h1>
+<form method="POST"><input name="username"><input name="password" type="password"><button>Sign In</button></form></div></body></html>`);
+  }
+  res.type('text/html').send(`<html><head><title>Superset</title></head><body><div id="app"></div></body></html>`);
+});
+
+// Exposed ArgoCD
+app.get(['/argocd/', '/api/v1/applications', '/argocd/login'], (req, res) => {
+  if (req.path.includes('api/v1/applications')) {
+    return res.json({ items: [{ metadata: { name: "avengers-app", namespace: "argocd" }, spec: { source: { repoURL: "https://github.com/avengers/armory.git" } } }] });
+  }
+  res.type('text/html').send(`<html><head><title>Argo CD</title></head><body><div id="app"></div></body></html>`);
+});
+
+// Exposed Harbor registry
+app.get(['/harbor/', '/api/v2.0/systeminfo', '/c/login'], (req, res) => {
+  if (req.path.includes('api/v2.0/systeminfo')) {
+    return res.json({ harbor_version: "v2.8.0", auth_mode: "db_auth", self_registration: true });
+  }
+  res.type('text/html').send(`<html><head><title>Harbor</title></head><body><h1>Harbor</h1></body></html>`);
+});
+
+// Spring Boot mappings (nuclei: springboot-mappings)
+app.get('/actuator/mappings', (req, res) => {
+  res.json({ contexts: { application: { mappings: { dispatcherServlets: { dispatcherServlet: [
+    { handler: "ResourceHttpRequestHandler", predicate: "/**" },
+    { handler: "com.avengers.controller.UserController#getUsers()", predicate: "/api/users" },
+    { handler: "com.avengers.controller.AdminController#adminPanel()", predicate: "/admin" }
+  ]}}}}});
+});
+
+// WordPress user enumeration (nuclei: wp-user-enum)
+app.get('/wp-json/wp/v2/users/', (req, res) => {
+  res.json([
+    { id: 1, name: "admin", slug: "admin", description: "Site Administrator", url: "", link: "https://avengers-armory.local/?author=1" },
+    { id: 2, name: "editor", slug: "editor", description: "", link: "https://avengers-armory.local/?author=2" }
+  ]);
+});
+
+// Exposed .well-known/apple-app-site-association
+app.get('/.well-known/apple-app-site-association', (req, res) => {
+  res.json({ applinks: { apps: [], details: [{ appID: "TEAMID.com.avengers.armory", paths: ["*"] }] } });
+});
+
+// Exposed Prometheus/Alertmanager
+app.get(['/alertmanager/', '/api/v1/alerts', '/api/v1/targets'], (req, res) => {
+  if (req.path.includes('v1/alerts')) {
+    return res.json({ status: "success", data: { alerts: [{ labels: { alertname: "HighMemoryUsage", instance: "10.0.0.1:9090" }, state: "firing" }] } });
+  }
+  if (req.path.includes('v1/targets')) {
+    return res.json({ status: "success", data: { activeTargets: [{ discoveredLabels: { __address__: "10.0.0.1:9090" }, scrapeUrl: "http://10.0.0.1:9090/metrics", health: "up" }] } });
+  }
+  res.type('text/html').send(`<html><head><title>Alertmanager</title></head><body><div id="app"></div></body></html>`);
+});
+
+// Exposed Rancher
+app.get(['/v3/', '/v3/settings', '/dashboard/'], (req, res) => {
+  if (req.path.includes('v3/settings')) {
+    return res.json({ data: [{ id: "server-url", value: "https://avengers-armory.local" }, { id: "server-version", value: "v2.7.0" }] });
+  }
+  if (req.path === '/v3/') {
+    return res.json({ type: "collection", links: { self: "/v3/" }, actions: {} });
+  }
+  res.type('text/html').send(`<html><head><title>Rancher</title></head><body><div id="app"></div></body></html>`);
+});
+
+// Exposed Haproxy stats
+app.get(['/haproxy?stats', '/haproxy-status'], (req, res) => {
+  res.type('text/html').send(`<html><head><title>Statistics Report for HAProxy</title></head><body>
+<h1>Statistics Report for HAProxy</h1>
+<h3>pid = 1234, uptime = 5d 3h 21m</h3>
+<table><tr><th>Backend</th><th>Status</th><th>Sessions</th></tr>
+<tr><td>web-backend</td><td>UP</td><td>1234</td></tr></table></body></html>`);
+});
+
+// ---- 30 CVE ENDPOINTS FROM NUCLEI TEMPLATES ----
+
+// CVE-2022-23944: Apache ShenYu Admin Unauth
+app.get('/plugin', (req, res) => {
+  res.json({"message":"query success","code":200,"data":[{"id":1,"name":"divide"}]});
+});
+
+// CVE-2024-5910: Palo Alto Expedition Admin Takeover
+app.get('/OS/startup/restore/restoreAdmin.php', (req, res) => {
+  res.type('text/plain').send('Admin user found\nAdmin password restored successfully');
+});
+
+// CVE-2021-44152: Reprise License Manager Auth Bypass
+app.get('/goforms/menu', (req, res) => {
+  res.type('text/html').send('<html><body><h1>RLM Administration Commands</h1></body></html>');
+});
+
+// CVE-2023-22480: KubeOperator Kubeconfig Exposure
+app.get('/api/v1/clusters/kubeconfig/k8s', (req, res) => {
+  res.setHeader('Content-Type', 'application/download');
+  res.send('apiVersion: v1\nclusters:\n- cluster:\n    server: https://10.0.0.1:6443');
+});
+
+// CVE-2024-0204: Fortra GoAnywhere MFT Auth Bypass
+app.get('/goanywhere/images/..;/wizard/InitialAccountSetup.xhtml', (req, res) => {
+  res.type('text/html').send('<html><title>goanywhere</title><body><h2>Create an administrator account</h2></body></html>');
+});
+
+// CVE-2022-45933: KubeView K8s Cert Leak
+app.get('/api/scrape/kube-system', (req, res) => {
+  res.type('text/plain').send('-----BEGIN CERTIFICATE-----\nMIIBkTCBfakecertdata\n-----END CERTIFICATE-----\nkubernetes.io/service-account');
+});
+
+// CVE-2021-40859: Auerswald PBX Info Disclosure
+app.get('/about_state', (req, res) => {
+  res.json({"pbx":"COMpact 5500R","dongleStatus":0,"macaddr":"00:11:22:33:44:55"});
+});
+
+// CVE-2021-33221: Ruckus IoT Controller Info Leak
+app.get('/service/v1/service-details', (req, res) => {
+  res.json({"message":"ok","data":{"dns":"8.8.8.8","gateway":"192.168.1.1"}});
+});
+
+// CVE-2024-40711: Veeam Backup Unauth Info Disclosure
+app.get('/api/v1/serverinfo', (req, res) => {
+  res.json({"databaseVendor":"PostgreSQL","databaseContentVersion":"12.1.2.5"});
+});
+
+// CVE-2022-31656: VMware Workspace ONE WEB-INF Exposure
+app.get(['/SAAS/t/_/;/WEB-INF/web.xml', '/;/WEB-INF/web.xml'], (req, res) => {
+  res.type('text/xml').send('<?xml version="1.0"?><web-app><servlet><servlet-name>dispatcher</servlet-name></servlet></web-app>');
+});
+
+// CVE-2021-21246: OneDev User Token Leak
+app.get('/rest/users/1', (req, res) => {
+  res.json({"id":1,"name":"admin","email":"admin@example.com","accessToken":"abc123def456"});
+});
+
+// CVE-2021-46371: AntD Admin User Info Disclosure (conflicts with existing /api/v1/users? no, different path)
+app.get('/api/v1/users', (req, res) => {
+  res.json({"data":[{"id":1,"name":"John","email":"john@test.com","phone":"555-0100"}]});
+});
+
+// CVE-2022-0281: Microweber User Info Leak
+app.get('/api/users/search_authors', (req, res) => {
+  res.json([{"id":1,"username":"admin","email":"admin@test.com","display_name":"Admin User"}]);
+});
+
+// CVE-2022-45354: WordPress Download Monitor User Data
+app.get('/wp-json/download-monitor/v1/user_data', (req, res) => {
+  res.json([{"id":1,"display_name":"admin","registered":"2024-01-01"}]);
+});
+
+// CVE-2021-39226: Grafana Snapshot Auth Bypass
+app.get('/api/snapshots/:key', (req, res) => {
+  res.json({"dashboard":{"title":"test"},"isSnapshot":true});
+});
+
+// CVE-2022-25568: MotionEye Config Exposure
+app.get('/config/list', (req, res) => {
+  res.json({"cameras":[{"upload_password":"secret123","network_password":"netpass456"}]});
+});
+
+// CVE-2022-31269: Linear eMerge Credential Exposure
+app.get('/test.txt', (req, res) => {
+  res.type('text/plain').send('ID=admin\nPassword=secret123');
+});
+
+// CVE-2021-40150: Reolink Nginx Config Exposure
+app.get('/conf/nginx.conf', (req, res) => {
+  res.type('text/plain').send('server {\n  listen 80;\n  location ~ \\.php$ {\n    fastcgi_pass 127.0.0.1:9000;\n  }\n}');
+});
+
+// CVE-2023-5003: WordPress LDAP Auth Report Exposure
+app.get('/wp-content/ldap-authentication-report.csv', (req, res) => {
+  res.type('text/csv').send('ID,USERNAME,TIME,LDAP STATUS\n1,admin,2024-01-01,Success\n2,jdoe,2024-01-02,Success');
+});
+
+// CVE-2023-34598: Gibbon SQL Dump Exposure
+app.get('/', (req, res, next) => {
+  if (req.query.q === './gibbon.sql') {
+    return res.type('text/plain').send('-- phpMyAdmin SQL Dump\n-- Database: gibbon\nCREATE TABLE users (id INT, name VARCHAR(255));');
+  }
+  next();
+});
+
+// CVE-2022-26148: Grafana Zabbix Credential Leak
+app.get('/login', (req, res, next) => {
+  if (req.query.redirect === '/') {
+    return res.type('text/html').send(`<script>window.grafanaBootData={"settings":{"datasources":{"zabbix":{"password":"admin123","username":"zabbix_user","url":"alexanderzobnin-zabbix-datasource"}}}}</script>`);
+  }
+  next();
+});
+
+// CVE-2022-36883: Jenkins Git Plugin Info Leak
+app.get('/git/notifyCommit', (req, res) => {
+  res.type('text/plain').send('repository: test\nTriggered by SCM API plugin\nNo Git consumers');
+});
+
+// CVE-2023-49103: OwnCloud Graphapi phpinfo Leak
+app.get('/apps/graphapi/vendor/microsoft/microsoft-graph/tests/GetPhpInfo.php/*', (req, res) => {
+  res.type('text/html').send('<h1>PHP Version 8.1.0</h1><h2>PHP Extension Build</h2><tr><td>OWNCLOUD_ADMIN_PASSWORD</td><td>owncloud</td></tr>');
+});
+
+// CVE-2024-30569: Netgear R6850 Info Disclosure
+app.get('/currentsetting.htm', (req, res) => {
+  res.type('text/plain').send('Firmware=V1.0.5.70\nLoginMethod=password\nModel=R6850');
+});
+
+// CVE-2025-28228: Electrolink Transmitter Creds
+app.get('/controlloLogin.js', (req, res) => {
+  res.type('application/javascript').send("function login(){if(user=='guest' && password=='guest'){return true;}}");
+});
+
+// CVE-2021-44138: Caucho Resin WEB-INF Exposure (handled by wildcard above for /;/WEB-INF/web.xml)
+
+// CVE-2024-8963: Ivanti CSA Path Traversal (URL-encoded path)
+app.use((req, res, next) => {
+  if (req.originalUrl.includes('/client/index.php') && req.originalUrl.includes('gsb/users.php')) {
+    return res.type('text/html').send('<html><title>Ivanti Cloud Services Appliance</title><body>User name: admin<br>Set Password</body></html>');
+  }
+  next();
+});
+
+// CVE-2021-3019: Lanproxy Config Exposure (path traversal)
+app.use((req, res, next) => {
+  if (req.originalUrl.includes('conf/config.properties')) {
+    return res.type('text/plain').send('config.admin.username=admin\nconfig.admin.password=SuperSecret123');
+  }
+  next();
+});
+
+// CVE-2023-32235: Ghost CMS Path Traversal
+app.use((req, res, next) => {
+  if (req.originalUrl.includes('/assets/built') && req.originalUrl.includes('package.json')) {
+    return res.json({"name":"ghost","version":"5.42.0","description":"Ghost CMS"});
+  }
+  next();
+});
+
+// CVE-2024-0204: GoAnywhere MFT (path traversal with ;)
+app.use((req, res, next) => {
+  if (req.originalUrl.includes('goanywhere') && req.originalUrl.includes('InitialAccountSetup')) {
+    return res.type('text/html').send('<html><title>goanywhere</title><body><h2>Create an administrator account</h2></body></html>');
+  }
+  next();
+});
+
+// CVE-2025-49132: Pterodactyl Panel Config Exposure
+app.get('/locales/locale.json', (req, res) => {
+  if (req.query.locale && req.query.locale.includes('config') && req.query.namespace === 'app') {
+    return res.json({"app":{"version":"1.11.5","key":"base64{{dGVzdGtleQ==}}"}});
+  }
+  res.json({"common":{"welcome":"Welcome"}});
+});
+
+// ---- ADDITIONAL NUCLEI-DETECTABLE ENDPOINTS ----
+
+// phpMyAdmin panel (nuclei: phpmyadmin-panel)
+app.get(['/phpmyadmin/', '/phpmyadmin', '/pma/', '/admin/phpmyadmin/', '/myadmin/', '/sql/'], (req, res) => {
+  res.type('text/html').send(`<!DOCTYPE html>
+<html><head><title>phpMyAdmin</title></head><body>
+<div id="page_content">
+<form method="post" action="index.php" name="login_form" class="login">
+<fieldset>
+<legend>Log in</legend>
+<div class="item"><label for="input_servername">Server Choice:</label>
+<select name="pma_servername" id="input_servername"><option value="localhost">localhost</option></select></div>
+<div class="item"><label for="input_username">Username:</label><input type="text" name="pma_username" id="input_username" value="" size="24" class="textfield"></div>
+<div class="item"><label for="input_password">Password:</label><input type="password" name="pma_password" id="input_password" value="" size="24" class="textfield"></div>
+</fieldset>
+<fieldset class="tblFooters"><input value="Go" type="submit" id="input_go"></fieldset>
+</form></div>
+<div id="pma_footer"><span class="version">4.8.4</span></div>
+</body></html>`);
+});
+
+// Jenkins detection (nuclei: jenkins-detect)
+app.get(['/whoAmI/', '/jenkins/', '/jenkins'], (req, res) => {
+  res.setHeader('X-Jenkins', '2.375.1');
+  res.setHeader('X-Jenkins-Session', 'abc123');
+  res.type('text/html').send(`<!DOCTYPE html>
+<html><head><title>Dashboard [Jenkins]</title></head><body>
+<div id="header"><img id="jenkins-head-icon" src="/static/abc123/images/svgs/logo.svg" alt="[Jenkins]">
+<span class="jenkins-name-icon-layout">Jenkins</span></div>
+<div id="main-panel"><h1>Welcome to Jenkins!</h1></div>
+</body></html>`);
+});
+
+// Elasticsearch exposure (nuclei: elasticsearch)
+app.get(['/_cat/indices', '/_all/_search', '/_cluster/health'], (req, res) => {
+  if (req.path.includes('_cat/indices')) {
+    return res.type('text/plain').send('green open users   abc123 1 0 150 0  50kb  50kb\ngreen open logs    def456 1 0 5000 0 500kb 500kb\n');
+  }
+  if (req.path.includes('_cluster/health')) {
+    return res.json({ cluster_name: "avengers-armory", status: "green", "number_of_nodes": 3, "number_of_data_nodes": 2 });
+  }
+  res.json({ took: 5, timed_out: false, hits: { total: { value: 150 }, hits: [
+    { _source: { username: "admin", password: "admin123", email: "admin@armory.local" } },
+    { _source: { username: "tony", password: "ironman", email: "tony@stark.com" } }
+  ]}});
+});
+
+// Kibana exposure (nuclei: exposed-kibana)
+app.get(['/app/kibana', '/app/kibana/'], (req, res) => {
+  res.type('text/html').send(`<!DOCTYPE html>
+<html><head><title>Kibana</title></head><body>
+<kbn-csp data="{}"></kbn-csp>
+<div class="kibanaWelcomeView" id="kbn_loading_message" data-test-subj="kbnLoadingMessage">
+<div class="kibanaWelcomeLogo"></div>
+<div class="kibanaWelcomeTitle">Loading Kibana</div>
+</div></body></html>`);
+});
+
+// Adminer panel (nuclei: adminer-panel)
+app.get(['/adminer.php', '/adminer/', '/adminer'], (req, res) => {
+  res.type('text/html').send(`<!DOCTYPE html>
+<html><head><title>Login - Adminer</title></head><body class="ltr">
+<div id="content"><form action="" method="post">
+<table><tr><th>System<td><select name="auth[driver]"><option value="server">MySQL</option></select>
+<tr><th>Server<td><input name="auth[server]" value="localhost">
+<tr><th>Username<td><input name="auth[username]" id="username" value="">
+<tr><th>Password<td><input type="password" name="auth[password]">
+<tr><th>Database<td><input name="auth[db]" value="">
+</table><p><input type="submit" value="Login">
+<input type="hidden" name="auth[permanent]" value="1">
+</form></div>
+<div id="lang"><a href="?lang=en">Adminer</a> <span class="version">4.8.1</span></div>
+</body></html>`);
+});
+
+// Mongo Express (nuclei: unauthenticated-mongo-express)
+app.get(['/mongo-express/', '/mongo-express', '/db/', '/mongodb/'], (req, res) => {
+  res.type('text/html').send(`<!DOCTYPE html>
+<html><head><title>Home - Mongo Express</title></head><body>
+<div class="container"><h1>Mongo Express</h1>
+<table class="table"><tr><th>Database</th><th>Collections</th></tr>
+<tr><td><a href="/db/admin/">admin</a></td><td>3</td></tr>
+<tr><td><a href="/db/avengers_armory/">avengers_armory</a></td><td>5</td></tr>
+</table></div></body></html>`);
+});
+
+// Node Express Status (nuclei: node-express-status)
+app.get('/express-status', (req, res) => {
+  res.type('text/html').send(`<!DOCTYPE html>
+<html><head><title>Express Status</title></head><body>
+<h1>Express Status</h1>
+<div><h2>CPU Usage</h2><p>12.5%</p></div>
+<div><h2>Memory</h2><p>RSS: 85MB, Heap Used: 45MB</p></div>
+<div><h2>Uptime</h2><p>3h 24m</p></div>
+</body></html>`);
+});
+
+// WordPress detection (nuclei: wordpress-detect)
+app.get(['/wp-admin/', '/wp-admin/admin-ajax.php', '/wp-includes/js/jquery/jquery.js', '/wp-content/', '/readme.html'], (req, res) => {
+  if (req.path.includes('readme.html')) {
+    return res.type('text/html').send(`<!DOCTYPE html>
+<html><head><title>WordPress &rsaquo; ReadMe</title></head><body>
+<h1 id="logo"><a href="https://wordpress.org/">WordPress</a></h1>
+<p>Version 6.4.2</p></body></html>`);
+  }
+  if (req.path.includes('admin-ajax.php')) {
+    return res.send('0');
+  }
+  res.type('text/html').send(`<!DOCTYPE html>
+<html><head><title>WordPress &rsaquo; Dashboard</title>
+<meta name="generator" content="WordPress 6.4.2" />
+</head><body class="wp-admin">
+<div id="wpbody"><h1>Dashboard</h1></div>
+</body></html>`);
+});
+
+// Tomcat manager (nuclei: tomcat-manager)
+app.get(['/manager/html', '/manager/', '/host-manager/html'], (req, res) => {
+  res.status(401).setHeader('WWW-Authenticate', 'Basic realm="Tomcat Manager Application"');
+  res.type('text/html').send(`<!DOCTYPE html>
+<html><head><title>401 Unauthorized</title></head><body>
+<h1>401 Unauthorized</h1>
+<p>You are not authorized to view this page. If you have not changed any configuration files, please examine the file <tt>conf/tomcat-users.xml</tt>.</p>
+<p>For example, to add the manager-gui role to a user named tomcat with a password of s3cret, add the following to the config file listed above.</p>
+<pre>&lt;role rolename="manager-gui"/&gt;
+&lt;user username="tomcat" password="s3cret" roles="manager-gui"/&gt;</pre>
+</body></html>`);
+});
+
+// Apache Struts (nuclei: struts-detect)
+app.get(['/struts/', '/struts/webconsole.html'], (req, res) => {
+  res.type('text/html').send(`<!DOCTYPE html>
+<html><head><title>Struts Problem Report</title></head><body>
+<h2>Struts Problem Report</h2>
+<p>Struts has detected an unhandled exception:</p>
+<div class="error"><b>Action class [example] not found</b></div>
+<div class="devMode">Developer Mode: Enabled. You should disable this in production.</div>
+</body></html>`);
+});
+
+// .npmrc exposure (nuclei: npmrc)
+app.get('/.npmrc', (req, res) => {
+  res.type('text/plain').send(`//registry.npmjs.org/:_authToken=npm_FAKE_AUTH_TOKEN_123456
+registry=https://registry.npmjs.org/
+@company:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=ghp_FAKE_GITHUB_TOKEN_789
+`);
+});
+
+// composer.json (nuclei: composer-config)
+app.get('/composer.json', (req, res) => {
+  res.json({
+    name: "avengers/armory",
+    description: "Security Lab",
+    require: { "laravel/framework": "^10.0", "guzzlehttp/guzzle": "^7.0" },
+    autoload: { "psr-4": { "App\\": "app/" } }
+  });
+});
+
+// Gruntfile.js exposure
+app.get(['/Gruntfile.js', '/gulpfile.js', '/webpack.config.js'], (req, res) => {
+  res.type('application/javascript').send(`module.exports = function(grunt) {
+  grunt.initConfig({
+    pkg: grunt.file.readJSON('package.json'),
+    secret: { key: 'INTERNAL_SECRET_KEY_123' }
+  });
+};
+`);
+});
+
+// config.php exposure
+app.get(['/config.php', '/config/config.php', '/application/config/database.php', '/app/config/parameters.yml'], (req, res) => {
+  if (req.path.includes('parameters.yml')) {
+    return res.type('text/yaml').send(`parameters:
+    database_host: localhost
+    database_port: 3306
+    database_name: avengers_armory
+    database_user: root
+    database_password: SuperSecretDbPass123!
+    secret: ThisTokenIsNotSoSecretChangeIt
+`);
+  }
+  res.type('text/plain').send(`<?php
+$config['db_host'] = 'localhost';
+$config['db_user'] = 'root';
+$config['db_pass'] = 'SuperSecretDbPass123!';
+$config['db_name'] = 'avengers_armory';
+$config['secret_key'] = 'super-secret-key-do-not-share';
+?>`);
+});
+
+// Exposed .DS_Store (nuclei: ds-store)
+app.get('/.DS_Store', (req, res) => {
+  res.type('application/octet-stream');
+  const header = Buffer.from([0x00, 0x00, 0x00, 0x01, 0x42, 0x75, 0x64, 0x31]);
+  res.send(Buffer.concat([header, Buffer.from('admin\x00backup\x00config\x00uploads\x00')]));
+});
+
+// Exposed .svn/entries (nuclei: svn-entries)
+app.get(['/.svn/entries', '/.svn/wc.db'], (req, res) => {
+  if (req.path.includes('wc.db')) {
+    return res.type('application/octet-stream').send('SQLite format 3\x00');
+  }
+  res.type('text/plain').send(`10
+dir
+12345
+https://svn.internal.avengers-armory.local/trunk
+`);
+});
+
+// Exposed .hg/requires (nuclei: hg-config)
+app.get('/.hg/requires', (req, res) => {
+  res.type('text/plain').send('dotencode\nfncache\ngeneraldelta\nrevlogv1\nstore\n');
+});
+
+// GraphQL introspection (nuclei: graphql-introspection)
+app.get(['/api/graphql', '/v1/graphql', '/graphql/console'], (req, res) => {
+  res.json({ data: { __schema: { queryType: { name: "Query" }, mutationType: { name: "Mutation" },
+    types: [
+      { kind: "OBJECT", name: "User", fields: [{ name: "id" }, { name: "username" }, { name: "password" }, { name: "email" }, { name: "role" }, { name: "creditCard" }] },
+      { kind: "OBJECT", name: "Query", fields: [{ name: "users" }, { name: "user" }, { name: "searchUsers" }, { name: "adminPanel" }] },
+      { kind: "OBJECT", name: "Mutation", fields: [{ name: "createUser" }, { name: "deleteUser" }, { name: "updateRole" }] }
+    ]
+  }}});
+});
+
+// Firebase config exposure (nuclei: firebase-urls)
+app.get(['/__/firebase/init.json', '/firebase-config.json'], (req, res) => {
+  res.json({
+    apiKey: "AIzaSyFAKE_API_KEY_NOT_REAL_123",
+    authDomain: "avengers-armory.firebaseapp.com",
+    projectId: "avengers-armory",
+    storageBucket: "avengers-armory.appspot.com",
+    messagingSenderId: "123456789",
+    appId: "1:123456789:web:abc123def456"
+  });
+});
+
+// Exposed JMX/Jolokia (nuclei: jolokia)
+app.get(['/jolokia/', '/jolokia/list', '/api/jolokia/'], (req, res) => {
+  res.json({
+    request: { type: "version" },
+    value: { agent: "1.7.1", protocol: "7.2", config: { maxDepth: "15" }, info: { product: "tomcat", vendor: "Apache", version: "9.0.65" } },
+    status: 200
+  });
+});
+
+// Prometheus metrics (nuclei: prometheus-metrics)
+app.get(['/metrics', '/prometheus/metrics', '/actuator/prometheus'], (req, res) => {
+  res.type('text/plain').send(`# HELP http_requests_total Total HTTP requests
+# TYPE http_requests_total counter
+http_requests_total{method="GET",endpoint="/api/users",status="200"} 15234
+http_requests_total{method="POST",endpoint="/api/login",status="200"} 4521
+http_requests_total{method="GET",endpoint="/admin",status="200"} 890
+# HELP process_cpu_seconds_total Total user and system CPU time spent
+# TYPE process_cpu_seconds_total counter
+process_cpu_seconds_total 1234.56
+# HELP node_memory_usage_bytes Memory usage
+# TYPE node_memory_usage_bytes gauge
+node_memory_usage_bytes{type="rss"} 89128960
+node_memory_usage_bytes{type="heapTotal"} 67108864
+`);
+});
+
+// Exposed Webpack source maps (nuclei: sourcemap-js)
+app.get(['/main.js.map', '/app.js.map', '/bundle.js.map', '/static/js/main.js.map'], (req, res) => {
+  res.json({
+    version: 3,
+    file: "main.js",
+    sourceRoot: "",
+    sources: ["../src/App.js", "../src/components/Login.js", "../src/utils/api.js", "../src/config/secrets.js"],
+    names: ["API_KEY", "SECRET", "adminPassword"],
+    mappings: "AAAA,SAAS"
+  });
+});
+
+// Exposed Redis info (nuclei: redis-info)
+app.get(['/redis-info', '/api/redis/info'], (req, res) => {
+  res.type('text/plain').send(`# Server
+redis_version:7.0.11
+redis_mode:standalone
+os:Linux 5.15.0-91-generic x86_64
+tcp_port:6379
+# Keyspace
+db0:keys=1500,expires=200
+db1:keys=50,expires=10
+`);
+});
+
+// Exposed /debug/vars (Go pprof style, nuclei: debug-vars)
+app.get(['/debug/vars', '/debug/pprof/', '/debug/requests'], (req, res) => {
+  res.json({
+    cmdline: ["/app/server", "-port=3001", "-db-password=SuperSecretDbPass123!"],
+    memstats: { Alloc: 2842624, TotalAlloc: 8424576, Sys: 12345678 },
+    goroutines: 15
+  });
+});
+
+// Exposed /server-info (nuclei: server-info variants)
+app.get(['/server-info', '/.server-info', '/server-info.php'], (req, res) => {
+  res.type('text/html').send(`<!DOCTYPE HTML>
+<html><head><title>Server Information</title></head><body>
+<h1>Apache Server Information</h1>
+<dl><dt><b>Server Version:</b> Apache/2.4.49 (Unix) OpenSSL/1.1.1k PHP/8.2.12</dt>
+<dt><b>Server Built:</b> 2024-01-15T10:30:00</dt>
+<dt><b>Module Magic Number:</b> 20120211:124</dt></dl>
+<h2>Server Settings</h2>
+<table><tr><th>Setting</th><th>Value</th></tr>
+<tr><td>ServerRoot</td><td>/etc/httpd</td></tr>
+<tr><td>DocumentRoot</td><td>/var/www/html</td></tr>
+</table></body></html>`);
+});
+
+// Exposed Swagger UI (nuclei: swagger-ui)
+app.get(['/swagger-ui/', '/swagger-ui/index.html', '/swagger/', '/api/docs'], (req, res) => {
+  res.type('text/html').send(`<!DOCTYPE html>
+<html><head><title>Swagger UI</title></head><body>
+<div id="swagger-ui"></div>
+<script>SwaggerUIBundle({url: "/api/swagger.json", dom_id: '#swagger-ui'})</script>
+</body></html>`);
+});
+
+// Spring Boot env (nuclei: springboot-env)
+app.get('/actuator/configprops', (req, res) => {
+  res.json({
+    contexts: { application: { beans: {
+      "dataSourceProperties": { properties: { url: "jdbc:postgresql://db.internal:5432/armory", username: "admin", password: "SuperSecretDbPass123!" } },
+      "spring.mail": { properties: { host: "smtp.internal", username: "mailer", password: "MailP@ss!" } }
+    }}}
+  });
+});
+
+// Exposed .well-known paths
+app.get(['/.well-known/openid-configuration', '/.well-known/jwks.json', '/.well-known/assetlinks.json'], (req, res) => {
+  if (req.path.includes('openid')) {
+    return res.json({
+      issuer: "https://avengers-armory.local",
+      authorization_endpoint: "https://avengers-armory.local/oauth/authorize",
+      token_endpoint: "https://avengers-armory.local/oauth/token",
+      userinfo_endpoint: "https://avengers-armory.local/oauth/userinfo",
+      jwks_uri: "https://avengers-armory.local/.well-known/jwks.json"
+    });
+  }
+  if (req.path.includes('jwks')) {
+    return res.json({ keys: [{ kty: "RSA", kid: "key1", use: "sig", n: "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2", e: "AQAB" }] });
+  }
+  res.json([{ relation: ["delegate_permission/common.handle_all_urls"], target: { namespace: "android_app", package_name: "com.avengers.armory", sha256_cert_fingerprints: ["AA:BB:CC:DD"] } }]);
+});
+
+// Exposed Kubernetes tokens
+app.get(['/var/run/secrets/kubernetes.io/serviceaccount/token', '/api/v1/namespaces', '/api/v1/pods'], (req, res) => {
+  if (req.path.includes('token')) {
+    return res.type('text/plain').send('eyJhbGciOiJSUzI1NiIsImtpZCI6IkZBS0VfSzhTX1RPS0VOIn0.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwic3ViIjoic3lzdGVtOnNlcnZpY2VhY2NvdW50OmRlZmF1bHQ6ZGVmYXVsdCJ9.FAKE_SIGNATURE');
+  }
+  res.json({ kind: "NamespaceList", apiVersion: "v1", items: [
+    { metadata: { name: "default" } }, { metadata: { name: "kube-system" } }, { metadata: { name: "production" } }
+  ]});
+});
+
+// Exposed .idea/ project files
+app.get(['/.idea/workspace.xml', '/.idea/modules.xml', '/.vscode/settings.json', '/.vscode/launch.json'], (req, res) => {
+  if (req.path.includes('.vscode')) {
+    return res.json({
+      "terminal.integrated.env.linux": { "DB_PASSWORD": "SuperSecretDbPass123!", "JWT_SECRET": "super-secret-jwt-key" },
+      "search.exclude": { "**/node_modules": true }
+    });
+  }
+  res.type('text/xml').send(`<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules><module fileurl="file://$PROJECT_DIR$/avengers-armory.iml" filepath="$PROJECT_DIR$/avengers-armory.iml" /></modules>
+  </component>
+</project>`);
+});
+
+// Exposed Procfile (Heroku)
+app.get('/Procfile', (req, res) => {
+  res.type('text/plain').send('web: node app.js\nworker: node worker.js\n');
+});
+
+// WSDL exposure
+app.get(['/service.wsdl', '/ws/service.wsdl', '/wsdl'], (req, res) => {
+  res.type('text/xml').send(`<?xml version="1.0" encoding="UTF-8"?>
+<definitions name="ArmoryService" targetNamespace="http://avengers-armory.local/ws"
+  xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/">
+  <service name="ArmoryService">
+    <port name="ArmoryPort" binding="tns:ArmoryBinding">
+      <soap:address location="http://avengers-armory.local/ws/service"/>
+    </port>
+  </service>
+</definitions>`);
+});
+
+// Exposed CGI-bin
+app.get(['/cgi-bin/', '/cgi-bin/test.cgi', '/cgi-bin/printenv.pl'], (req, res) => {
+  res.type('text/plain').send(`SERVER_SOFTWARE=Apache/2.4.49
+SERVER_NAME=avengers-armory.local
+GATEWAY_INTERFACE=CGI/1.1
+DOCUMENT_ROOT=/var/www/html
+REMOTE_ADDR=${req.ip}
+HTTP_HOST=${req.headers.host}
+SCRIPT_NAME=${req.path}
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
+`);
+});
+
+// Exposed .travis.yml / CI configs
+app.get(['/.travis.yml', '/.circleci/config.yml', '/.github/workflows/ci.yml', '/Jenkinsfile'], (req, res) => {
+  if (req.path.includes('Jenkinsfile')) {
+    return res.type('text/plain').send(`pipeline {
+  agent any
+  environment {
+    DB_PASSWORD = credentials('db-password')
+    AWS_KEY = credentials('aws-key')
+  }
+  stages {
+    stage('Build') { steps { sh 'npm install' } }
+    stage('Deploy') { steps { sh 'npm run deploy' } }
+  }
+}`);
+  }
+  res.type('text/yaml').send(`language: node_js
+node_js: "20"
+env:
+  global:
+    - DB_PASSWORD=SuperSecretDbPass123!
+    - AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+script:
+  - npm test
+  - npm run deploy
+`);
+});
+
+// API key/token in response headers (nuclei: api-key-in-header)
+app.get('/api/health', (req, res) => {
+  res.setHeader('X-Api-Key', 'sk_live_FAKE_API_KEY_12345');
+  res.setHeader('X-Auth-Token', 'eyJhbGciOiJIUzI1NiJ9.fake.token');
+  res.json({ status: "healthy", version: "1.0.0", environment: "production", debug: true });
+});
+
+// Exposed Terraform state
+app.get(['/terraform.tfstate', '/.terraform/terraform.tfstate'], (req, res) => {
+  res.json({
+    version: 4,
+    terraform_version: "1.5.0",
+    resources: [{
+      type: "aws_instance",
+      name: "web",
+      instances: [{ attributes: { ami: "ami-0123456789", instance_type: "t3.medium", public_ip: "54.123.45.67" } }]
+    }, {
+      type: "aws_db_instance",
+      name: "main",
+      instances: [{ attributes: { engine: "postgres", username: "admin", password: "SuperSecretDbPass123!", endpoint: "db.internal:5432" } }]
+    }]
+  });
+});
+
+// Exposed Ansible vault
+app.get(['/ansible.cfg', '/group_vars/all.yml', '/inventory.yml'], (req, res) => {
+  res.type('text/yaml').send(`all:
+  vars:
+    db_password: SuperSecretDbPass123!
+    aws_access_key: AKIAIOSFODNN7EXAMPLE
+    aws_secret_key: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+  hosts:
+    web01: { ansible_host: 10.0.0.1 }
+    db01: { ansible_host: 10.0.0.2 }
+`);
+});
+
+// Info page with all technologies (nuclei: tech-detect)
+app.get('/info', (req, res) => {
+  res.json({
+    server: "Apache/2.4.49",
+    runtime: "Node.js " + process.version,
+    framework: "Express 4.18.2",
+    database: "PostgreSQL 15.4",
+    cache: "Redis 7.0.11",
+    search: "Elasticsearch 8.11.0",
+    os: process.platform,
+    arch: process.arch,
+    uptime: process.uptime(),
+    env: process.env.NODE_ENV || "development"
+  });
+});
+
+// ---- 404 with path reflection + SQL error + Express stack trace ----
+// (nuclei: express-stack-trace, xss-uri-reflected, error-based-sql-injection, host-header-injection)
+app.use((req, res) => {
+  const urlPath = decodeURIComponent(req.url);
+  if (urlPath.includes("'") || urlPath.includes('"') || urlPath.includes(';')) {
+    return res.status(500).type('text/html').send(`<!DOCTYPE html>
+<html><head><title>Error</title></head><body>
+<h1>Internal Server Error</h1>
+<p>SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '${urlPath}' at line 1</p>
+<pre>Warning: mysqli_query(): (HY000/1064): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '${urlPath}' at line 1
+    at /app/node_modules/express/lib/router/index.js:284:15
+    at Function.handle (/app/node_modules/express/lib/router/index.js:284:15)</pre>
+</body></html>`);
+  }
+  res.status(404).type('text/html').send(`<!DOCTYPE html>
+<html><head><title>Error</title></head><body>
+<h1>Not Found</h1>
+<p>The requested URL ${urlPath} was not found on server ${req.headers.host}.</p>
+<pre>NotFoundError: Not Found
+    at Function.handle (/app/node_modules/express/lib/router/index.js:284:15)
+    at /app/node_modules/express/lib/router/index.js:365:5
+    at next (/app/node_modules/express/lib/router/route.js:149:14)
+    at Layer.handle_error (/app/node_modules/express/lib/router/layer.js:95:5)
+    at trim_prefix (/app/node_modules/express/lib/router/index.js:328:13)
+    at /app/node_modules/express/lib/router/index.js:286:9
+    at Function.process_params (/app/node_modules/express/lib/router/index.js:346:12)
+    at next (/app/node_modules/express/lib/router/index.js:280:10)
+    at expressInit (/app/node_modules/express/lib/middleware/init.js:40:5)
+    at Layer.handle [as handle_request] (/app/node_modules/express/lib/router/layer.js:95:5)</pre>
+</body></html>`);
+});
+
+// ---- ERROR HANDLER with full stack trace ----
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).send(`<html><body style="background:#0a0a0f;color:#e23636;font-family:sans-serif;padding:40px;"><h1>💥 ${err.message}</h1><pre style="color:#888;">${err.stack}</pre><a href="/" style="color:#1e90ff;">← Back</a></body></html>`);
+  res.status(500).type('text/html').send(`<!DOCTYPE html>
+<html><head><title>Error</title></head><body>
+<h1>${err.message}</h1>
+<h2>${err.status || 500}</h2>
+<pre>${err.stack}</pre>
+<p>Environment: ${process.env.NODE_ENV || 'development'}</p>
+<p>Node: ${process.version}</p>
+<p>CWD: ${process.cwd()}</p>
+</body></html>`);
 });
 
 // ============================================================
