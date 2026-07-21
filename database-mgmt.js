@@ -120,7 +120,7 @@ async function initDb() {
     console.log('✅ Connected to Supabase via Management API');
   } catch (e) {
     console.error('❌ Supabase connection failed:', e.message);
-    throw e;
+    console.log('⚠️  Starting without database - static vuln endpoints still work');
   }
   
   return _db;
