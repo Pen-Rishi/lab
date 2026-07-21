@@ -1,0 +1,246 @@
+CONNECTSECURE — TECHNOLOGY-WISE SCAN IMPROVEMENTS
+==================================================
+
+Add these checks based on what technology is detected on the target.
+Each section = what Tenable/Qualys check that CS doesn't.
+
+
+NGINX
+=====
+
+Detected by: Server: nginx
+
+CS does: port scan, SSL ciphers
+
+Missing checks:
+  - http-methods.nse (check OPTIONS for PUT/DELETE/PROPFIND)
+  - http-enum.nse (directory brute-force)
+  - http-git.nse (.git exposure)
+  - ssl-heartbleed.nse
+  - ssl-poodle.nse
+  - ssl-dh-params.nse
+
+Tenable/Qualys also check:
+  - nginx version-specific CVEs (version from Server header or error page)
+  - ngx_http_mp4_module vulns
+  - ngx_http_rewrite_module vulns
+  - ngx_http_dav_module vulns
+  - ngx_mail_auth_http_module vulns
+
+
+APACHE HTTPD
+============
+
+Detected by: Server: Apache
+
+CS does: port scan, SSL ciphers
+
+Missing checks:
+  - http-apache-negotiation.nse (multiviews attack)
+  - http-apache-server-status.nse (server-status exposure)
+  - http-userdir-enum.nse (~user enumeration)
+  - http-enum.nse
+  - http-shellshock.nse (CVE-2014-6271)
+
+Tenable/Qualys also check:
+  - Apache version-specific CVEs
+  - mod_status exposure
+  - mod_info exposure
+  - .htaccess bypass methods
+  - Server-status page
+  - CGI-bin directory listing
+  - PHP info pages
+
+
+APACHE TOMCAT
+=============
+
+Detected by: Server: Apache-Coyote
+
+CS does: port scan
+
+Missing checks:
+  - http-tomcat-version.nse
+  - /manager/html default creds check
+  - /examples/ directory check
+  - JMX exposure
+  - AJP connector check (CVE-2020-1938 Ghostcat)
+
+Tenable/Qualys also check:
+  - Tomcat version CVEs
+  - Default credentials (admin/admin, tomcat/tomcat)
+  - Manager app exposure
+  - Host-manager exposure
+
+
+WORDPRESS
+=========
+
+Detected by: /wp-content/, /wp-includes/, generator meta tag
+
+CS does: nothing (doesn't crawl to find it)
+
+Missing checks:
+  - http-wordpress-enum.nse (plugins, themes, version)
+  - http-wordpress-users.nse (user enumeration)
+  - /wp-json/wp/v2/users/ check
+  - wp-config.php backup check
+
+Tenable/Qualys also check:
+  - WordPress version from readme.html, generator tag
+  - Plugin list from /wp-content/plugins/
+  - Theme list from /wp-content/themes/
+  - wpforms, elementor, woocommerce specific checks
+  - XML-RPC check (pingback, system.multicall)
+
+
+IIS (MICROSOFT)
+===============
+
+Detected by: Server: Microsoft-IIS
+
+CS does: port scan
+
+Missing checks:
+  - http-iis-short-name-brute.nse (short file name disclosure)
+  - http-iis-webdav-vuln.nse (WebDAV vulns)
+  - http-aspnet-debug.nse (debugging enabled)
+  - /trace.axd check
+  - /elmah.axd check
+  - /app_offline.htm check
+
+Tenable/Qualys also check:
+  - IIS version CVEs
+  - WebDAV enabled
+  - PUT method enabled
+  - ASP.NET debug mode
+  - MachineKey disclosure
+  - ViewState MAC validation disabled
+
+
+JENKINS / CI/CD
+===============
+
+Detected by: /jenkins/, /jenkins/login, X-Jenkins header
+
+CS does: nothing
+
+Missing checks:
+  - /script (Groovy script console — RCE if unauthenticated)
+  - /manage (admin panel)
+  - /api/json (API access)
+  - /whoAmI (user info)
+
+Tenable/Qualys also check:
+  - Jenkins version CVEs
+  - Default credentials
+  - Unauthenticated script console
+  - Job configuration disclosure
+  - Credentials exposure
+
+
+SPRING BOOT / ACTUATOR
+=======================
+
+Detected by: /actuator/, /actuator/health, Spring-specific error pages
+
+CS does: nothing
+
+Missing checks:
+  - /actuator (list all endpoints)
+  - /actuator/env (environment vars — may leak AWS keys)
+  - /actuator/heapdump (full heap dump — may leak secrets)
+  - /actuator/beans (all beans)
+  - /actuator/configprops (configuration)
+  - /actuator/loggers (change log levels)
+
+Tenable/Qualys also check:
+  - Spring Boot version CVEs
+  - Spring4Shell (CVE-2022-22965)
+  - Actuator exposure
+  - Unauthenticated heapdump
+  - Env endpoint disclosure
+
+
+JIRA / ATLASSIAN
+================
+
+Detected by: /secure/, /login.jsp, X-AREQUESTID header
+
+CS does: nothing
+
+Missing checks:
+  - /rest/api/2/recent/2/items/recommended (recent projects)
+  - /rest/api/2/user (user enumeration)
+  - /plugins/servlet/gadgets/makeRequest (SSRF)
+  - Jira version CVEs
+
+Tenable/Qualys also check:
+  - Jira version
+  - Unauthenticated project access
+  - User enumeration via /rest/api/2/user/search
+  - Dashboard access
+  - Attachment access
+
+
+SHAREPOINT
+==========
+
+Detected by: /_layouts/, /_vti_bin/, SPRequestGuid header
+
+CS does: nothing
+
+Missing checks:
+  - /_layouts/15/settings.aspx
+  - /_api/web/siteusers (user enumeration)
+  - /_vti_bin/authentication.asmx (SOAP login endpoint)
+  - NTLM information disclosure
+
+Tenable/Qualys also check:
+  - SharePoint version CVEs
+  - Anonymous access to sites
+  - People picker enumeration
+  - Legacy SOAP endpoints
+  - FormDigest disclosure
+
+
+GENERAL (ANY TECHNOLOGY)
+========================
+
+These apply regardless of what's detected:
+
+  - http-cors.nse (CORS misconfiguration)
+  - http-cookie-flags.nse (missing HttpOnly/Secure/SameSite)
+  - http-security-headers.nse (missing CSP, HSTS, XFO, XCTO)
+  - http-open-redirect.nse (open redirect)
+  - http-trace.nse (TRACE method enabled — XST attack)
+  - http-put.nse (PUT method enabled)
+  - http-backup-finder.nse (backup files)
+  - http-config-backup.nse (config backup files)
+  - http-robots.txt.nse (robots.txt analysis)
+  - http-sitemap-generator.nse (build site map from links)
+  - http-errors.nse (error page analysis)
+  - http-grep.nse (custom pattern grep)
+  - http-internal-ip-disclosure.nse
+  - http-jsonp-detection.nse
+  - ssl-heartbleed.nse
+  - ssl-poodle.nse
+  - ssl-dh-params.nse
+  - ssl-cert.nse (certificate analysis)
+
+
+IMPLEMENTATION TABLE
+=====================
+
+Technology    | Detection method               | Scripts to add                    | Priority
+--------------|--------------------------------|-----------------------------------|----------
+nginx         | Server: nginx                  | http-methods, http-enum, http-git | HIGH
+Apache        | Server: Apache                 | http-apache-*, http-shellshock    | HIGH
+Tomcat        | Server: Apache-Coyote          | http-tomcat-*, AJP check          | HIGH
+WordPress     | /wp-content/, /wp-includes/    | http-wordpress-*                  | HIGH
+IIS           | Server: Microsoft-IIS          | http-iis-*                        | MEDIUM
+Jenkins       | /jenkins, X-Jenkins            | /script, /api/json, /manage       | HIGH
+Spring Boot   | /actuator/health               | /actuator/* endpoints             | HIGH
+Jira          | /secure/, /login.jsp           | REST API checks                   | MEDIUM
+SharePoint    | /_layouts/, SPRequestGuid      | /_api/, /_vti_bin/                | MEDIUM
+GENERAL       | Always (any target)            | 18 scripts listed above           | ALWAYS

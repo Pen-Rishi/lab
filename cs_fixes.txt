@@ -1,0 +1,240 @@
+CONNECTSECURE — COMMON FIXES FOR ALL TARGETS
+=============================================
+
+These are the universal problems that cause FPs on EVERY target, not just one.
+Fix these once and CS quality improves across all scans.
+
+
+FIX 1: SERVICE DETECTION CONFUSION
+===================================
+
+Problem: CS reads "nginx" in Server header but reports Apache Struts vulns.
+         Same happens with IIS, Cloudflare, AWS ALB, Node.js, Python servers.
+
+Fix:
+    After nmap gets the Server header, map it to the correct software family:
+
+    Server header          →  Report vulns for
+    -------------              -----------------
+    nginx                    →  nginx only
+    Apache                   →  Apache httpd only
+    Apache-Coyote            →  Tomcat
+    Microsoft-IIS            →  IIS
+    cloudflare               →  skip (CDN, not origin)
+    awselb/2.0               →  skip (load balancer)
+    Kestrel                  →  ASP.NET Core
+    gunicorn                 →  Python
+    uWSGI                    →  Python
+    Node.js                  →  Express
+    Caddy                    →  Caddy
+
+    If server header doesn't match ANY expected pattern → report as "Unknown"
+    and only run generic checks (TLS, headers, methods), not framework-specific vulns.
+
+    This prevents Apache Struts findings on nginx servers, IIS findings on
+    Apache servers, etc. Happens on literally every scan.
+
+
+FIX 2: RESPONSE STATUS CODE FILTER
+===================================
+
+Problem: CS reports findings on pages that return 301, 302, 307, 308.
+         Non-existent pages, redirects, and login-required pages all get
+         the same treatment as real pages.
+
+Fix:
+    For every URL that CS fetches, check the status code FIRST:
+
+    2xx → OK, run all checks
+    301 → SKIP all findings (page redirected, not a real page)
+    302 → SKIP all findings
+    307 → SKIP all findings  
+    308 → SKIP all findings
+    401 → report as "Authentication Required" only, skip injection tests
+    403 → report as "Forbidden" only, skip injection tests
+    404 → SKIP all findings (page doesn't exist)
+    429 → STOP scanning this target (rate limited)
+    500 → report as "Server Error" only, skip injection tests
+    502 → STOP scanning (gateway error, server may be down)
+    503 → STOP scanning (service unavailable)
+
+    This kills all webshell findings, all non-existent page findings,
+    all clickjacking-on-redirect findings. Universal problem.
+
+
+FIX 3: PAYLOAD CONTEXT ANALYSIS
+================================
+
+Problem: CS finds payload text ANYWHERE in the response and reports a vuln.
+         If the URL parameter gets echoed in the page HTML, every injection
+         test "passes" even when nothing executed.
+
+Fix:
+    When checking if a payload reflected, classify WHERE it appears:
+
+    CONTEXT_LEVELS:
+    
+    Level 1 - URL/Href context (LOW confidence):
+        Payload appears inside: href="...PAYLOAD", src="...PAYLOAD",  
+        action="...PAYLOAD", or similar URL attributes
+        → Report as "Reflected Parameter" (Info)
+        → NEVER report as XSS, SSTI, SQLi, NoSQLi, Command Injection
+
+    Level 2 - HTML body but encoded (MEDIUM confidence):
+        Payload appears as &lt;script&gt; or &amp;lt; or URL-encoded
+        → Report as "Reflected Parameter with Partial Encoding" (Low)
+        → Still not executable, but encoding is incomplete
+
+    Level 3 - Raw HTML/JS (HIGH confidence):
+        Payload appears as-is: <script>alert(1)</script>
+        OR inside event handler: onload="alert(1)"
+        OR as <iframe>, <img>, <svg> with executable content
+        → Report as actual vulnerability
+
+    Level 4 - New session token received (CRITICAL confidence):
+        Payload in request → different session token in response
+        → Report as SSTI confirmed (template evaluated server-side)
+
+    This kills false SSTI, false NoSQL, false command injection, false
+    prototype pollution on every target. Universal fix.
+
+
+FIX 4: STORED XSS VERIFICATION
+===============================
+
+Problem: CS sends a POST with a marker, then checks the SAME response.
+         The marker appears because the server echoes input back in the
+         form/response — not because it was stored in a database.
+
+Fix:
+    Stored XSS requires TWO separate requests:
+
+    Request 1: POST payload to page
+        ✓ Check response for marker (expected, server echoes input)
+        ✗ DO NOT report stored XSS yet
+
+    Request 2: GET same page WITHOUT sending payload
+        ✓ If marker still appears → STORED XSS (confirmed)
+        ✗ If marker gone → not stored, skip
+
+    For efficiency: batch this. After all POST tests, do a sweep of
+    GET requests to recently-POSTed URLs to check for persistence.
+
+    This kills stored XSS FPs on every target with forms.
+
+
+FIX 5: SKIMMER PATTERN WHITELIST
+=================================
+
+Problem: CS flags "fromCharCode" as skimmer. fromCharCode is a standard
+         JavaScript function used by every JS library in existence.
+         Also flags "google-analytic" as magecart (typo of "analytics"
+         which appears in Google Analytics' own code).
+
+Fix:
+    Maintain a whitelist of known-safe CDN domains. Never report skimmer
+    on these:
+
+    cdnjs.cloudflare.com
+    js.stripe.com
+    connect.facebook.net
+    js.sentry-cdn.com
+    static.klaviyo.com
+    checkout.razorpay.com
+    unpkg.com
+    cdn.faceit.com
+    cdn.jsdelivr.net
+    ajax.googleapis.com
+    ajax.aspnetcdn.com
+    html5shim.googlecode.com
+
+    For unknown domains, check for REAL skimmer patterns:
+    
+    REAL_SKIMMER = [
+        "atob(",                                // decodes base64
+        "String.fromCharCode(",                  // builds strings
+        "document.forms",                        // collects form data
+        ".value",                                // reads input values
+        "fetch(",                                // sends data
+        "XMLHttpRequest",                        // sends data
+        "https://",                              // exfiltration URL
+        "sendBeacon",                            // beacon API exfil
+    ]
+
+    Only report skimmer if 3+ patterns match from an unknown domain.
+    fromCharCode alone is never a skimmer. Universal fix.
+
+
+FIX 6: DEDUPLICATION BY VULNERABILITY, NOT BY PORT
+===================================================
+
+Problem: CS reports every finding per IP:port. Same script on port 80
+         and 443 = 2 findings. Same TLS issue with and without PCI DSS
+         tag = 2 findings. Same vulnerability on 40 event pages = 40 findings.
+
+Fix:
+    Group by vulnerability ID + target, then merge port info:
+
+    Before: 
+        "Missing SRI on script.js (port 80)"
+        "Missing SRI on script.js (port 443)"
+    
+    After (1 finding):
+        "Missing SRI on script.js (ports 80, 443)"
+
+    Before:
+        "TLS 1.0 Enabled"
+        "TLS 1.0 Enabled (PCI DSS)"
+    
+    After (1 finding):
+        "TLS 1.0 Enabled (PCI DSS violation)"
+
+    Before:
+        40 "Stored XSS on /event/*" findings
+    
+    After (1 finding):
+        "Stored XSS on /event/* (40 endpoints affected)"
+
+    Universal fix for every scan. Report size drops 50-70%.
+
+
+FIX 7: RATE LIMIT DETECTION
+============================
+
+Problem: CS doesn't detect when it's being rate limited or blocked.
+         Server returns 429/503 → CS continues scanning → all subsequent
+         findings are unreliable.
+
+Fix:
+    Track response codes during scan:
+
+    if 3+ consecutive responses return 429:
+        STOP scanning this target
+        Report: "Rate limited — scan incomplete, results partial"
+
+    if 5+ consecutive responses return 503 or 502:
+        STOP scanning this target
+        Report: "Server unavailable — scan incomplete"
+
+    if 2+ responses return unexpected CAPTCHA or WAF page:
+        STOP scanning
+        Report: "WAF/CAPTCHA triggered — scan blocked"
+
+    Universal fix. Every scanner hits rate limits eventually.
+
+
+=====================================================
+IMPACT SUMMARY
+
+Fix                    | FPs killed | Effort | Applies to
+-----------------------+------------+--------+-----------
+1. Service detection   | 2-5        | 1 hour | ALL targets
+2. Status code filter  | 10-20      | 2 hours | ALL targets
+3. Payload context     | 15-30      | 4 hours | ALL targets
+4. Stored XSS verify   | 10-50      | 3 hours | Targets with forms
+5. Skimmer whitelist   | 5-15       | 1 hour | ALL targets
+6. Deduplication       | 50-70% of report | 2 hours | ALL targets
+7. Rate limit detect   | Prevents garbage scans | 1 hour | ALL targets
+
+Total: ~7 fixes, ~2 weeks dev time, applies to EVERY future scan
+=====================================================

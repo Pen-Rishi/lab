@@ -1,0 +1,58 @@
+<div class="container" style="padding:40px 0;">
+  <div class="section-title">
+    <h2>🔍 Search the Armory</h2>
+    <p class="subtitle">Find your perfect hero gear</p>
+    <div class="accent-line"></div>
+  </div>
+
+  <!-- A03: SQL Injection hint -->
+  <div class="alert alert-warning" style="max-width:600px;margin:0 auto 30px;">
+    🎯 <strong>SQL Injection Lab:</strong> Try searching for <code>' OR '1'='1</code> to dump all products, or <code>' UNION SELECT id,username,password,email,role,is_admin,avatar_url FROM users --</code> to leak user data!
+  </div>
+
+  <div style="max-width:600px;margin:0 auto 40px;">
+    <form action="/search" method="GET">
+      <div style="display:flex;gap:8px;">
+        <input type="text" name="q" class="form-input" placeholder="Search products..." value="<%= query %>" style="flex:1;font-size:1rem;">
+        <button type="submit" class="btn btn-primary btn-lg">🔍 Search</button>
+      </div>
+    </form>
+  </div>
+
+  <% if (error) { %>
+    <div class="alert alert-danger" style="max-width:600px;margin:0 auto 30px;">
+      ⚠️ <%= error %>
+    </div>
+  <% } %>
+
+  <% if (query) { %>
+    <div class="text-muted mb-3" style="text-align:center;">
+      Search results for: "<strong><%= query %></strong>"
+    </div>
+  <% } %>
+
+  <% if (products.length > 0) { %>
+    <div class="product-grid">
+      <% products.forEach(function(product) { %>
+        <a href="/products/<%= product.id %>" class="card" style="text-decoration:none;color:inherit;">
+          <div class="card-img" style="font-size:3rem;padding:30px;background:linear-gradient(135deg,var(--dark-3),var(--dark-2));">
+            <% const icons = { 'Mjolnir Replica': '🔨', "Captain America's Shield": '🛡️', 'Iron Man Arc Reactor': '💎', 'Stormbreaker Axe': '🪓', 'Black Panther Vibranium Claws': '🐱', "Hawkeye's Recurve Bow": '🏹', "Doctor Strange Sling Ring": '🔥', 'Iron Man Mark LXXXV Suit': '🤖', 'Captain America Stealth Suit': '⭐', 'Black Widow Tactical Suit': '🕷️', 'Spider-Man Web-Shooters': '🕸️', 'Ant-Man Suit (Pym Tech)': '🐜', 'Infinity Gauntlet Replica': '⛓️', 'Tesseract (Space Stone)': '💠', 'Time Stone (Eye of Agamotto)': '👁️', 'Soul Stone Prop': '🟠', 'J.A.R.V.I.S. AI Assistant': '🧠', 'Quinjet Model Kit': '✈️', 'HulkBuster Armor (Legacy)': '💪', 'Nano Gauntlet (Endgame)': '⚡', 'Captain Marvel Jacket': '🌟', "Loki's Scepter (Mind Stone)": '🔱', 'Groot Baby Pot': '🌱', 'Vibranium Sample (Raw)': '💎', 'Asgardian Mead (Premium)': '🍺' }; %>
+            <%= icons[product.name] || '📦' %>
+          </div>
+          <div class="card-body">
+            <h3 class="card-title"><%= product.name %></h3>
+            <p class="card-text"><%= (product.description || '').substring(0, 100) %></p>
+            <div class="card-price">$<%= Number(product.price).toLocaleString() %></div>
+          </div>
+        </a>
+      <% }) %>
+    </div>
+  <% } else if (query) { %>
+    <div class="text-center" style="padding:60px 0;">
+      <div style="font-size:4rem;margin-bottom:20px;">🔍</div>
+      <h3>No Results Found</h3>
+      <p class="text-muted mt-2">Nothing matches your search. Try a different query!</p>
+      <a href="/products" class="btn btn-primary mt-3">Browse All Products</a>
+    </div>
+  <% } %>
+</div>

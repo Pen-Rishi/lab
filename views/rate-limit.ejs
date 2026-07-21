@@ -1,0 +1,41 @@
+<div class="container" style="padding:40px 0;">
+  <div style="max-width:500px;margin:0 auto;text-align:center;">
+    <div class="section-title">
+      <h2>⏱️ Rate Limiting Lab</h2>
+      <p class="subtitle">A04: Insecure Design — Missing Rate Limiting</p>
+      <div class="accent-line"></div>
+    </div>
+
+    <div class="alert alert-warning">
+      🎯 <strong>Rate Limiting Lab:</strong> Try clicking the vote button many times rapidly! There is NO rate limiting, so every click counts.
+    </div>
+
+    <div class="card" style="padding:40px;">
+      <div style="font-size:4rem;margin-bottom:20px;">🏆</div>
+      <h3 style="margin-bottom:10px;">Hero of the Month</h3>
+      <p class="text-muted" style="margin-bottom:20px;">Vote for your favorite Avenger!</p>
+      
+      <div style="font-family:'Orbitron',monospace;font-size:3rem;font-weight:900;color:var(--secondary);margin-bottom:10px;">
+        <%= attempts %>
+      </div>
+      <p class="text-muted" style="font-size:0.9rem;margin-bottom:24px;">Total votes cast</p>
+
+      <form action="/rate-limit-demo/vote" method="POST">
+        <button type="submit" class="btn btn-primary btn-lg" style="width:100%;">🗳️ Vote +1</button>
+      </form>
+
+      <div style="margin-top:24px;padding:16px;background:var(--dark-3);border-radius:var(--radius-sm);text-align:left;">
+        <p style="color:var(--text-muted);font-size:0.85rem;">
+          <strong>💡 The Problem:</strong> You can vote unlimited times by rapidly clicking the button or sending automated requests. There's no IP-based rate limiting, no CAPTCHA, and no session-based throttling.
+        </p>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-top:8px;">
+          <strong>🔧 The Fix:</strong> Implement rate limiting using middleware like <code>express-rate-limit</code> with appropriate thresholds per user/IP.
+        </p>
+      </div>
+
+      <div style="margin-top:16px;">
+        <a href="/rate-limit-demo" class="btn btn-sm btn-secondary">↻ Reset Counter</a>
+      </div>
+    </div>
+  </div>
+</div>

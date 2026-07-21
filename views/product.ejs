@@ -1,0 +1,101 @@
+<div class="container">
+  <% if (error) { %>
+    <div class="alert alert-danger mt-2">
+      ⚠️ <%= error %>
+    </div>
+  <% } %>
+
+  <% if (product) { %>
+    <div class="product-detail">
+      <div class="product-image" style="font-size:6rem;background:linear-gradient(135deg,var(--dark-3),var(--dark-2));">
+        <% const icons = { 'Mjolnir Replica': '🔨', "Captain America's Shield": '🛡️', 'Iron Man Arc Reactor': '💎', 'Stormbreaker Axe': '🪓', 'Black Panther Vibranium Claws': '🐱', "Hawkeye's Recurve Bow": '🏹', "Doctor Strange Sling Ring": '🔥', 'Iron Man Mark LXXXV Suit': '🤖', 'Captain America Stealth Suit': '⭐', 'Black Widow Tactical Suit': '🕷️', 'Spider-Man Web-Shooters': '🕸️', 'Ant-Man Suit (Pym Tech)': '🐜', 'Infinity Gauntlet Replica': '⛓️', 'Tesseract (Space Stone)': '💠', 'Time Stone (Eye of Agamotto)': '👁️', 'Soul Stone Prop': '🟠', 'J.A.R.V.I.S. AI Assistant': '🧠', 'Quinjet Model Kit': '✈️', 'HulkBuster Armor (Legacy)': '💪', 'Nano Gauntlet (Endgame)': '⚡', 'Captain Marvel Jacket': '🌟', "Loki's Scepter (Mind Stone)": '🔱', 'Groot Baby Pot': '🌱', 'Vibranium Sample (Raw)': '💎', 'Asgardian Mead (Premium)': '🍺' }; %>
+        <%= icons[product.name] || '📦' %>
+      </div>
+
+      <div class="product-info">
+        <div class="product-meta">
+          <span class="card-category"><%= product.category %></span>
+          <span class="card-stock"><%= product.stock > 0 ? '✅ In Stock (' + product.stock + ' available)' : '❌ Out of Stock' %></span>
+        </div>
+        <h1><%= product.name %></h1>
+        <div class="product-price">$<%= Number(product.price).toLocaleString() %></div>
+        <p class="product-description"><%= product.description %></p>
+
+        <% if (user) { %>
+          <form action="/cart/add" method="POST">
+            <input type="hidden" name="product_id" value="<%= product.id %>">
+            <div class="quantity-selector">
+              <span class="form-label" style="margin:0;">Quantity:</span>
+              <button type="button" class="quantity-btn minus">−</button>
+              <input type="number" name="quantity" class="quantity-input" value="1" min="1" max="99">
+              <button type="button" class="quantity-btn plus">+</button>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg add-to-cart-btn" style="width:100%;">Add to Cart</button>
+          </form>
+        <% } else { %>
+          <a href="/login?redirect=/products/<%= product.id %>" class="btn btn-secondary btn-lg" style="width:100%;text-align:center;">Login to Purchase</a>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- Reviews Section -->
+    <div class="reviews-section">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;">
+        <h2>⭐ Customer Reviews</h2>
+        <% if (user) { %>
+          <button onclick="document.getElementById('review-form').style.display='block'" class="btn btn-sm btn-secondary">Write Review</button>
+        <% } %>
+      </div>
+
+      <% if (user) { %>
+        <div id="review-form" style="display:none;background:var(--dark-3);border:1px solid var(--border);border-radius:var(--radius-md);padding:24px;margin-bottom:30px;">
+          <h3 style="margin-bottom:16px;">Write Your Review</h3>
+          <form action="/products/<%= product.id %>/review" method="POST">
+            <div class="form-group">
+              <label class="form-label">Your Rating</label>
+              <select name="rating" class="form-select">
+                <option value="5">⭐⭐⭐⭐⭐</option>
+                <option value="4">⭐⭐⭐⭐</option>
+                <option value="3">⭐⭐⭐</option>
+                <option value="2">⭐⭐</option>
+                <option value="1">⭐</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Your Comment</label>
+              <textarea name="comment" class="form-textarea" placeholder="Share your thoughts on this item... (XSS payloads welcome!)"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Submit Review</button>
+          </form>
+        </div>
+      <% } %>
+
+      <% if (reviews.length > 0) { %>
+        <% reviews.forEach(function(review) { %>
+          <div class="review-card">
+            <div class="review-header">
+              <span class="review-username"><%= review.username %></span>
+              <span class="review-stars">
+                <% for (let i = 0; i < (review.rating || 5); i++) { %>⭐<% } %>
+              </span>
+            </div>
+            <!-- A03: Stored XSS - user review rendered without escaping -->
+            <div class="review-comment"><%- review.comment %></div>
+            <div style="font-size:0.75rem;color:var(--text-dim);margin-top:8px;"><%= new Date(review.created_at).toLocaleDateString() %></div>
+          </div>
+        <% }) %>
+      <% } else { %>
+        <div class="text-center" style="padding:40px;background:var(--dark-3);border-radius:var(--radius-md);border:1px solid var(--border);">
+          <p class="text-muted">No reviews yet. Be the first to review this item!</p>
+        </div>
+      <% } %>
+    </div>
+  <% } else { %>
+    <div class="error-page">
+      <div class="error-code">404</div>
+      <h2>Product Not Found</h2>
+      <p class="text-muted mt-2">This item may have been destroyed in battle!</p>
+      <a href="/products" class="btn btn-primary mt-3">Back to Armory</a>
+    </div>
+  <% } %>
+</div>

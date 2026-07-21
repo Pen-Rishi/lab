@@ -1,0 +1,155 @@
+<div class="container" style="padding:40px 0;">
+  <div style="display:flex;align-items:center;gap:16px;margin-bottom:30px;">
+    <span style="font-size:2rem;">👁️</span>
+    <div>
+      <h2>S.H.I.E.L.D. Command Center</h2>
+      <p class="text-muted">Admin Dashboard — Classified Access Only</p>
+    </div>
+  </div>
+
+  <% if (error) { %>
+    <div class="alert alert-danger">
+      ⚠️ <%= error %>
+    </div>
+    <div class="text-center" style="padding:60px 0;">
+      <div style="font-size:5rem;margin-bottom:20px;">🚫</div>
+      <h2>Access Denied</h2>
+      <p class="text-muted mt-2">This area is for Avengers leadership only!</p>
+      <a href="/" class="btn btn-primary mt-3">Back to Home</a>
+    </div>
+  <% } else { %>
+    <!-- A01: Broken Access Control hint -->
+    <div class="alert alert-warning">
+      🎯 <strong>Broken Access Control Lab:</strong> The admin check uses a cookie called <code>user_role</code>. Try setting it to <code>admin</code>! Or use mass assignment on profile to become admin.
+    </div>
+
+    <!-- Stats Overview -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:30px;">
+      <div class="card" style="padding:24px;text-align:center;">
+        <div style="font-size:2rem;margin-bottom:8px;">👥</div>
+        <div style="font-family:'Orbitron',monospace;font-size:1.5rem;font-weight:700;"><%= users.length %></div>
+        <div style="color:var(--text-muted);font-size:0.85rem;">Total Agents</div>
+      </div>
+      <div class="card" style="padding:24px;text-align:center;">
+        <div style="font-size:2rem;margin-bottom:8px;">📦</div>
+        <div style="font-family:'Orbitron',monospace;font-size:1.5rem;font-weight:700;"><%= products.length %></div>
+        <div style="color:var(--text-muted);font-size:0.85rem;">Armory Items</div>
+      </div>
+      <div class="card" style="padding:24px;text-align:center;">
+        <div style="font-size:2rem;margin-bottom:8px;">📋</div>
+        <div style="font-family:'Orbitron',monospace;font-size:1.5rem;font-weight:700;"><%= orders.length %></div>
+        <div style="color:var(--text-muted);font-size:0.85rem;">Recent Orders</div>
+      </div>
+    </div>
+
+    <!-- Users Table -->
+    <div style="margin-bottom:40px;">
+      <h3 style="margin-bottom:20px;">👥 Registered Agents</h3>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Username</th>
+              <th>Email</th>
+              <th>Full Name</th>
+              <th>Role</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% users.forEach(function(u) { %>
+              <tr>
+                <td><%= u.id %></td>
+                <td><%= u.username %></td>
+                <td><%= u.email %></td>
+                <td><%= u.full_name || '-' %></td>
+                <td>
+                  <span class="tag <%= u.is_admin ? 'tag-admin' : 'tag-user' %>">
+                    <%= u.is_admin ? 'Admin' : u.role %>
+                  </span>
+                </td>
+                <td>
+                  <% if (!u.is_admin) { %>
+                    <form action="/admin/users/delete/<%= u.id %>" method="POST" style="display:inline;">
+                      <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Expel this agent?')">Delete</button>
+                    </form>
+                  <% } else { %>
+                    <span style="color:var(--text-dim);font-size:0.85rem;">Protected</span>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Add Product -->
+    <div style="margin-bottom:40px;">
+      <h3 style="margin-bottom:20px;">➕ Add Armory Item</h3>
+      <div class="card" style="padding:24px;">
+        <form action="/admin/products/add" method="POST">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div class="form-group">
+              <label class="form-label">Product Name</label>
+              <input type="text" name="name" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Category</label>
+              <select name="category" class="form-select">
+                <option>Weapons</option>
+                <option>Apparel</option>
+                <option>Collectibles</option>
+                <option>Tech</option>
+                <option>Mystic</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Price ($)</label>
+              <input type="number" name="price" step="0.01" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Stock</label>
+              <input type="number" name="stock" value="10" class="form-input">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea name="description" class="form-textarea"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary">Add Product</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Recent Orders -->
+    <div>
+      <h3 style="margin-bottom:20px;">📋 Recent Orders</h3>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>User ID</th>
+              <th>Total</th>
+              <th>Status</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% orders.forEach(function(order) { %>
+              <tr>
+                <td>#<%= order.id %></td>
+                <td><%= order.user_id %></td>
+                <td>$<%= Number(order.total).toLocaleString() %></td>
+                <td><span class="order-status <%= order.status %>"><%= order.status %></span></td>
+                <td><%= new Date(order.created_at).toLocaleDateString() %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% } %>
+</div>

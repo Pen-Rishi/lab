@@ -1,0 +1,72 @@
+<div class="container" style="padding:40px 0;">
+  <div class="section-title">
+    <h2>🛡️ Avengers Armory</h2>
+    <p class="subtitle">Browse our collection of hero-grade equipment</p>
+    <div class="accent-line"></div>
+  </div>
+
+  <% if (error) { %>
+    <div class="alert alert-danger">
+      ⚠️ <%= error %>
+    </div>
+  <% } %>
+
+  <!-- Category Filter -->
+  <div class="category-pills">
+    <a href="/products" class="category-pill <%= category === 'all' ? 'active' : '' %>">All Items</a>
+    <a href="/products?category=Weapons" class="category-pill <%= category === 'Weapons' ? 'active' : '' %>">⚔️ Weapons</a>
+    <a href="/products?category=Apparel" class="category-pill <%= category === 'Apparel' ? 'active' : '' %>">👕 Apparel</a>
+    <a href="/products?category=Collectibles" class="category-pill <%= category === 'Collectibles' ? 'active' : '' %>">🏆 Collectibles</a>
+    <a href="/products?category=Tech" class="category-pill <%= category === 'Tech' ? 'active' : '' %>">🔧 Tech</a>
+    <a href="/products?category=Mystic" class="category-pill <%= category === 'Mystic' ? 'active' : '' %>">🔮 Mystic</a>
+  </div>
+
+  <!-- Search Bar -->
+  <div style="max-width:500px;margin:0 auto 40px;">
+    <form action="/search" method="GET">
+      <div style="display:flex;gap:8px;">
+        <input type="text" name="q" class="form-input" placeholder="Search the armory... (try: ' OR 1=1 --)" style="flex:1;">
+        <button type="submit" class="btn btn-primary">🔍 Search</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Products Grid -->
+  <% if (products.length > 0) { %>
+    <div class="product-grid">
+      <% products.forEach(function(product) { %>
+        <a href="/products/<%= product.id %>" class="card animate-in" style="text-decoration:none;color:inherit;">
+          <div class="card-img" style="font-size:3rem;padding:30px;background:linear-gradient(135deg,var(--dark-3),var(--dark-2));">
+            <% const icons = { 'Mjolnir Replica': '🔨', "Captain America's Shield": '🛡️', 'Iron Man Arc Reactor': '💎', 'Stormbreaker Axe': '🪓', 'Black Panther Vibranium Claws': '🐱', "Hawkeye's Recurve Bow": '🏹', "Doctor Strange Sling Ring": '🔥', 'Iron Man Mark LXXXV Suit': '🤖', 'Captain America Stealth Suit': '⭐', 'Black Widow Tactical Suit': '🕷️', 'Spider-Man Web-Shooters': '🕸️', 'Ant-Man Suit (Pym Tech)': '🐜', 'Infinity Gauntlet Replica': '⛓️', 'Tesseract (Space Stone)': '💠', 'Time Stone (Eye of Agamotto)': '👁️', 'Soul Stone Prop': '🟠', 'J.A.R.V.I.S. AI Assistant': '🧠', 'Quinjet Model Kit': '✈️', 'HulkBuster Armor (Legacy)': '💪', 'Nano Gauntlet (Endgame)': '⚡', 'Captain Marvel Jacket': '🌟', "Loki's Scepter (Mind Stone)": '🔱', 'Groot Baby Pot': '🌱', 'Vibranium Sample (Raw)': '💎', 'Asgardian Mead (Premium)': '🍺' }; %>
+            <%= icons[product.name] || '📦' %>
+          </div>
+          <div class="card-body">
+            <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
+              <h3 class="card-title" style="font-size:0.9rem;"><%= product.name %></h3>
+              <span class="card-price" style="font-size:1rem;">$<%= Number(product.price).toLocaleString() %></span>
+            </div>
+            <p class="card-text"><%= product.description.substring(0, 100) %><%= product.description.length > 100 ? '...' : '' %></p>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <span class="card-category"><%= product.category %></span>
+              <span class="card-stock"><%= product.stock > 0 ? '✓ In Stock' : 'Out of Stock' %></span>
+            </div>
+            <div style="margin-top:15px;padding-top:15px;border-top:1px solid var(--border);">
+              <form action="/cart/add" method="POST" style="display:flex;gap:8px;">
+                <input type="hidden" name="product_id" value="<%= product.id %>">
+                <input type="number" name="quantity" value="1" min="1" max="99" class="form-input" style="width:60px;text-align:center;">
+                <button type="submit" class="btn btn-sm btn-primary add-to-cart-btn" style="flex:1;">Add to Cart</button>
+              </form>
+            </div>
+          </div>
+        </a>
+      <% }) %>
+    </div>
+  <% } else { %>
+    <div class="text-center" style="padding:60px 0;">
+      <div style="font-size:4rem;margin-bottom:20px;">🕳️</div>
+      <h3>No Products Found</h3>
+      <p class="text-muted mt-2">Nothing in this category. Try a different filter!</p>
+      <a href="/products" class="btn btn-primary mt-3">View All Products</a>
+    </div>
+  <% } %>
+</div>

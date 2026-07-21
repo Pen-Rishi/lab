@@ -1,0 +1,59 @@
+<div class="container" style="padding:40px 0;">
+  <div style="max-width:600px;margin:0 auto;">
+    <div class="section-title">
+      <h2>🖼️ Hero Avatar</h2>
+      <p class="subtitle">Fetch your avatar from any URL (even internal ones!)</p>
+      <div class="accent-line"></div>
+    </div>
+
+    <!-- A10: SSRF hint -->
+    <div class="alert alert-warning">
+      🎯 <strong>SSRF Lab:</strong> Try fetching internal URLs like <code>http://localhost:3000/debug</code> or <code>file:///etc/passwd</code> to access sensitive server resources!
+    </div>
+
+    <% if (error) { %>
+      <div class="alert alert-danger">⚠️ <%= error %></div>
+    <% } %>
+
+    <div class="card" style="padding:24px;margin-bottom:30px;">
+      <h3 style="margin-bottom:16px;">Fetch Avatar from URL</h3>
+      <form action="/avatar/fetch" method="POST">
+        <div class="form-group">
+          <label class="form-label">Image URL</label>
+          <input type="text" name="url" class="form-input" placeholder="https://example.com/avatar.jpg" value="https://i.imgur.com/placeholder.png">
+          <div style="font-size:0.75rem;color:var(--text-dim);margin-top:4px;">
+            Try: <code>http://localhost:3000/debug</code> to test SSRF!
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg" style="width:100%;">🔍 Fetch Image</button>
+      </form>
+    </div>
+
+    <% if (imageData) { %>
+      <div class="card" style="padding:24px;text-align:center;">
+        <h3 style="margin-bottom:16px;">Fetched Avatar</h3>
+        <img src="<%= imageData %>" class="avatar-preview" alt="Fetched avatar">
+        <p style="color:var(--text-muted);font-size:0.85rem;word-break:break-all;margin-top:12px;">
+          Fetched from: <code><%= fetchedUrl %></code>
+        </p>
+        <form action="/profile/update" method="POST" style="margin-top:16px;">
+          <input type="hidden" name="avatar_url" value="<%= fetchedUrl %>">
+          <input type="hidden" name="is_admin" value="<%= profile.is_admin || 0 %>">
+          <button type="submit" class="btn btn-sm btn-gold">💾 Set as Avatar</button>
+        </form>
+      </div>
+    <% } %>
+
+    <!-- Current Avatar -->
+    <div class="card" style="padding:24px;text-align:center;">
+      <h3 style="margin-bottom:16px;">Current Avatar</h3>
+      <div style="font-size:5rem;margin-bottom:10px;">
+        <% const avatars = { 'tony': '🤖', 'steve': '⭐', 'thor': '⚡', 'natasha': '🕷️', 'bruce': '💚', 'peter': '🕸️', 'strange': '🔮', 'carol': '🌟', 'clint': '🏹', 'admin': '👁️' }; %>
+        <%= avatars[profile.username] || '🦸' %>
+      </div>
+      <p style="color:var(--text-muted);font-size:0.85rem;">
+        <strong><%= profile.full_name || profile.username %></strong>
+      </p>
+    </div>
+  </div>
+</div>

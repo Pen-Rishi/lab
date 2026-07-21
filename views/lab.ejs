@@ -1,0 +1,124 @@
+<div class="container lab-page">
+  <div class="section-title">
+    <span style="font-size:3rem;display:block;margin-bottom:10px;">🔬</span>
+    <h2>OWASP Top 10 Security Lab</h2>
+    <p class="subtitle">Avengers Armory — Vulnerability Guide & Exploitation Lab</p>
+    <div class="accent-line"></div>
+  </div>
+
+  <div class="alert alert-danger" style="margin-bottom:40px;">
+    ⚠️ This lab contains INTENTIONAL security vulnerabilities. Only use in isolated environments for educational purposes!
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:24px;">
+    <% vulns.forEach(function(vuln) { %>
+      <div class="vuln-card">
+        <div class="vuln-header">
+          <span class="vuln-badge high"><%= vuln.id %></span>
+          <div>
+            <h3 style="font-size:1.1rem;margin:0;"><%= vuln.name %></h3>
+          </div>
+        </div>
+        <p style="color:var(--text-muted);font-size:0.85rem;line-height:1.6;">
+          <%= {
+            'A01': 'IDOR via cart/orders user param. Admin cookie bypass. Path traversal via /api/download. Forced browsing exposes /.env secrets. CORS misconfig allows cross-origin data theft.',
+            'A02': 'Plaintext passwords in DB + cookies. Weak session secret (avengers123). No HTTPS. MD5 for password reset tokens. No httpOnly/secure flags on cookies.',
+            'A03': 'SQLi in search, login, products, categories. UNION-based extraction at /api/sqli/union. Stored XSS in feedback & reviews. Reflected XSS at /xss/search. Command injection at /api/tools/ping and /api/tools/curl.',
+            'A04': 'Mass assignment on profile (is_admin, role). No rate limiting on voting. Password change without current password. Coupon abuse / price override. No password strength rules.',
+            'A05': '/debug exposes all passwords + config. Default admin/admin123. Stack traces on errors. Directory listing at /static/. /config.js exposed. Server headers leak versions.',
+            'A06': 'XXE via /api/legacy/parse-xml reads local files. /api/check-versions shows known CVEs (Express 4.16.0, axios 0.21.0). Legacy XML endpoint. No patch management.',
+            'A07': 'User enumeration in login. Weak passwords (ironman, spidey). Predictable MD5 password reset tokens. Session fixation (no session refresh on login). No MFA, no lockout.',
+            'A08': 'eval() RCE at /suit-config and /api/deserialize. Unsigned package install at /integrity. Auto-update without integrity check at /api/check-update.',
+            'A09': 'Financial transfers at /api/transfer with zero audit trail. Admin actions not logged. Login failures silently discarded. No monitoring, no alerts.',
+            'A10': 'SSRF via /avatar/fetch accessing any URL. Blind SSRF at /api/ssrf/probe. Cloud metadata endpoints at 169.254.169.254. Chain with debug for admin creds.'
+          }[vuln.id] || '' %>
+        </p>
+        <div class="vuln-endpoints">
+          <% vuln.endpoints.forEach(function(endpoint) { %>
+            <span class="vuln-endpoint"><%= endpoint %></span>
+          <% }) %>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+
+  <!-- Quick Start Section -->
+  <div class="section-title" style="margin-top:60px;">
+    <h2>🚀 Quick Start Challenges</h2>
+    <div class="accent-line"></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;">
+    <div class="card" style="padding:24px;">
+      <div style="font-size:2rem;margin-bottom:10px;">👑</div>
+      <h4 style="margin-bottom:8px;">Become Admin</h4>
+      <p style="color:var(--text-muted);font-size:0.85rem;">Mass assignment (is_admin=1), admin cookie bypass, SQLi login bypass, or path traversal to read config.</p>
+    </div>
+    <div class="card" style="padding:24px;">
+      <div style="font-size:2rem;margin-bottom:10px;">👁️</div>
+      <h4 style="margin-bottom:8px;">Steal All Data</h4>
+      <p style="color:var(--text-muted);font-size:0.85rem;">SQLi UNION extraction, path traversal to read config files, SSRF to internal debug endpoint, XXE to read files.</p>
+    </div>
+    <div class="card" style="padding:24px;">
+      <div style="font-size:2rem;margin-bottom:10px;">🕸️</div>
+      <h4 style="margin-bottom:8px;">SSRF Chain → Admin</h4>
+      <p style="color:var(--text-muted);font-size:0.85rem;">SSRF → /debug → admin creds → login → full admin. Or SSRF → .env → API keys. Cloud metadata at 169.254.169.254.</p>
+    </div>
+    <div class="card" style="padding:24px;">
+      <div style="font-size:2rem;margin-bottom:10px;">🔓</div>
+      <h4 style="margin-bottom:8px;">IDOR + Forced Browsing</h4>
+      <p style="color:var(--text-muted);font-size:0.85rem;">View other users' carts/orders via ?user=X parameter. Access /.env for secrets. Read any file via path traversal.</p>
+    </div>
+    <div class="card" style="padding:24px;">
+      <div style="font-size:2rem;margin-bottom:10px;">💉</div>
+      <h4 style="margin-bottom:8px;">RCE via Multiple Vectors</h4>
+      <p style="color:var(--text-muted);font-size:0.85rem;">Command injection via ping/curl tools, eval() via suit-config and deserialize, insecure deserialization API.</p>
+    </div>
+    <div class="card" style="padding:24px;">
+      <div style="font-size:2rem;margin-bottom:10px;">🔧</div>
+      <h4 style="margin-bottom:8px;">Auth + Business Logic</h4>
+      <p style="color:var(--text-muted);font-size:0.85rem;">Brute force login (no lockout), predict password reset tokens (MD5), abuse coupon codes, bypass price checks.</p>
+    </div>
+  </div>
+
+  <div class="card" style="padding:30px;margin-top:40px;border-color:var(--primary);">
+    <h3 style="margin-bottom:16px;">📖 How to Use This Lab</h3>
+    <ol style="color:var(--text-muted);line-height:2;padding-left:20px;">
+      <li><strong>Register</strong> a new account or use one of the <strong>test accounts</strong> provided on the login page</li>
+      <li>Read the lab guide for each vulnerability class</li>
+      <li>Use tools like <strong>Burp Suite, curl, or browser dev tools</strong> to test exploits</li>
+      <li>Check the <strong>/debug</strong> endpoint for leaked credentials</li>
+      <li>Try <strong>path traversal</strong>: <code>/api/download?file=../../config.js</code></li>
+      <li>Try <strong>command injection</strong>: <code>/api/tools/ping?host=localhost;id</code></li>
+      <li>Try <strong>XXE</strong>: POST XML with DOCTYPE + SYSTEM to /api/legacy/parse-xml</li>
+      <li>Try <strong>insecure deserialization</strong>: POST to /api/deserialize with RCE payload</li>
+      <li>Try combining vulnerabilities for <strong>chained attacks</strong> (e.g., SSRF → Debug → Admin creds)</li>
+      <li>After exploiting, think about how you would <strong>fix</strong> each vulnerability!</li>
+    </ol>
+  </div>
+
+  <!-- Test Credentials -->
+  <div class="card" style="padding:24px;margin-top:20px;">
+    <h4 style="margin-bottom:12px;">🔐 Test Accounts</h4>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Password</th>
+            <th>Role</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>admin</td><td>admin123</td><td><span class="tag tag-admin">Admin</span></td></tr>
+          <tr><td>tony</td><td>ironman</td><td><span class="tag tag-user">User</span></td></tr>
+          <tr><td>steve</td><td>america</td><td><span class="tag tag-user">User</span></td></tr>
+          <tr><td>thor</td><td>odin123</td><td><span class="tag tag-user">User</span></td></tr>
+          <tr><td>natasha</td><td>widow</td><td><span class="tag tag-user">User</span></td></tr>
+          <tr><td>bruce</td><td>hulk</td><td><span class="tag tag-user">User</span></td></tr>
+          <tr><td>peter</td><td>spidey</td><td><span class="tag tag-user">User</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

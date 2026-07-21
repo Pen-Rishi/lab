@@ -1,0 +1,49 @@
+<div class="container" style="padding:40px 0;">
+  <div style="max-width:600px;margin:0 auto;">
+    <div class="section-title">
+      <h2>📦 Software Integrity Lab</h2>
+      <p class="subtitle">A08: Software & Data Integrity Failures</p>
+      <div class="accent-line"></div>
+    </div>
+
+    <div class="alert alert-warning">
+      🎯 <strong>Integrity Failures Lab:</strong> This simulates installing packages without verifying their integrity. In real scenarios, attackers can publish malicious packages to steal credentials!
+    </div>
+
+    <div class="card" style="padding:24px;margin-bottom:20px;">
+      <h3 style="margin-bottom:16px;">Install a Package (Simulated)</h3>
+      <form action="/integrity/install" method="POST">
+        <div class="form-group">
+          <label class="form-label">Package Name</label>
+          <input type="text" name="package_name" class="form-input" placeholder="e.g., avengers-utils" value="malicious-package-v1.0.0">
+        </div>
+        <div class="form-divider" style="text-align:center;color:var(--text-dim);margin:16px 0;">— or —</div>
+        <div class="form-group">
+          <label class="form-label">Package URL</label>
+          <input type="text" name="package_url" class="form-input" placeholder="https://evil-npm-registry.com/package.tgz">
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg" style="width:100%;">📦 Install Package</button>
+      </form>
+    </div>
+
+    <% if (result) { %>
+      <div class="card" style="padding:24px;border-color:var(--warning);">
+        <h4 style="color:var(--warning);margin-bottom:12px;">⚠️ Installation Result</h4>
+        <pre><%= result %></pre>
+      </div>
+    <% } %>
+
+    <div class="card" style="padding:24px;margin-top:20px;">
+      <h4 style="margin-bottom:12px;">💡 What's the vulnerability?</h4>
+      <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.7;">
+        <strong>A08: Software and Data Integrity Failures</strong> occurs when software is installed without verifying its integrity through checksums, signatures, or trusted sources. Attackers can:
+      </p>
+      <ul style="color:var(--text-muted);font-size:0.85rem;line-height:1.8;padding-left:20px;margin-top:10px;">
+        <li>Publish malicious packages with similar names (typosquatting)</li>
+        <li>Compromise legitimate packages and add backdoors</li>
+        <li>Use man-in-the-middle attacks to replace packages during download</li>
+        <li>Exploit CI/CD pipelines that don't verify package integrity</li>
+      </ul>
+    </div>
+  </div>
+</div>

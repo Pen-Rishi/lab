@@ -1,0 +1,67 @@
+<div class="container" style="padding:40px 0;">
+  <div style="max-width:700px;margin:0 auto;">
+    <div class="section-title">
+      <h2>💬 Avengers Feedback</h2>
+      <p class="subtitle">Tell Earth's Mightiest Heroes what you think!</p>
+      <div class="accent-line"></div>
+    </div>
+
+    <!-- A03: Stored XSS hint -->
+    <div class="alert alert-warning">
+      🎯 <strong>Stored XSS Lab:</strong> Try submitting a feedback message with a script payload like <code>&lt;script&gt;alert('XSS')&lt;/script&gt;</code> — it will execute every time someone views this page!
+    </div>
+
+    <% if (error) { %>
+      <div class="alert alert-danger">⚠️ <%= error %></div>
+    <% } %>
+    <% if (success) { %>
+      <div class="alert alert-success">✅ <%= success %></div>
+    <% } %>
+
+    <div class="card" style="padding:24px;margin-bottom:30px;">
+      <h3 style="margin-bottom:16px;">Submit Feedback</h3>
+      <form action="/feedback" method="POST">
+        <div class="form-group">
+          <label class="form-label">Rating</label>
+          <select name="rating" class="form-select">
+            <option value="5">⭐⭐⭐⭐⭐ Amazing!</option>
+            <option value="4">⭐⭐⭐⭐ Great</option>
+            <option value="3">⭐⭐⭐ Good</option>
+            <option value="2">⭐⭐ Okay</option>
+            <option value="1">⭐ Needs Work</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Your Message</label>
+          <textarea name="message" class="form-textarea" placeholder="Share your feedback... (HTML tags are NOT sanitized!)" rows="4"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Send Feedback</button>
+      </form>
+    </div>
+
+    <!-- Feedback List -->
+    <h3 style="margin-bottom:20px;">Past Feedback</h3>
+    
+    <% if (feedbacks.length > 0) { %>
+      <% feedbacks.forEach(function(fb) { %>
+        <div class="review-card">
+          <div class="review-header">
+            <span class="review-username"><%= fb.username %></span>
+            <span>
+              <% for (let i = 0; i < (fb.rating || 5); i++) { %>⭐<% } %>
+            </span>
+          </div>
+          <!-- A03: STORED XSS - message is rendered raw without escaping! -->
+          <div class="review-comment"><%- fb.message %></div>
+          <div style="font-size:0.75rem;color:var(--text-dim);margin-top:8px;">
+            <%= new Date(fb.created_at).toLocaleDateString() %>
+          </div>
+        </div>
+      <% }) %>
+    <% } else { %>
+      <div class="text-center" style="padding:40px;background:var(--dark-3);border-radius:var(--radius-md);border:1px solid var(--border);">
+        <p class="text-muted">No feedback yet. Be the first to share!</p>
+      </div>
+    <% } %>
+  </div>
+</div>

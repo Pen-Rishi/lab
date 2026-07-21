@@ -1,0 +1,36 @@
+<div class="container" style="padding:40px 0;">
+  <div style="max-width:600px;margin:0 auto;">
+    <div class="section-title">
+      <h2>🔧 Suit Configuration Lab</h2>
+      <p class="subtitle">A08: Insecure Deserialization via eval()</p>
+      <div class="accent-line"></div>
+    </div>
+
+    <div class="alert alert-warning">
+      🎯 <strong>Eval Injection Lab:</strong> Try passing a config query parameter like <code>?config={x: 1}</code>. For RCE try: <code>?config={toString:process.mainModule.require('child_process').execSync('id').toString()}</code>
+    </div>
+
+    <div class="card" style="padding:24px;margin-bottom:20px;">
+      <h3 style="margin-bottom:16px;">Current Configuration</h3>
+      <pre><%= JSON.stringify(config, null, 2) %></pre>
+      <div style="margin-top:16px;">
+        <a href="/suit-config?config=%7B%22suit_type%22%3A%22Mark_LXXXV%22%2C%22repulsors%22%3Atrue%2C%22flight%22%3Atrue%2C%22ai_assistant%22%3A%22JARVIS%22%7D" class="btn btn-sm btn-secondary">Load Iron Man Config</a>
+        <a href="/suit-config?config=%7B%22suit_type%22%3A%22Stealth%22%2C%22shield%22%3Atrue%2C%22vibranium%22%3Atrue%7D" class="btn btn-sm btn-secondary">Load Cap Config</a>
+      </div>
+    </div>
+
+    <div class="card" style="padding:24px;">
+      <h4 style="margin-bottom:12px;">💡 How it works</h4>
+      <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.7;">
+        The configuration is parsed using <code>eval()</code>, which means any JavaScript expression passed in the URL will be executed on the server.
+        This is a classic insecure deserialization vulnerability that can lead to Remote Code Execution (RCE).
+      </p>
+      <div style="margin-top:12px;padding:12px;background:var(--dark-2);border-radius:var(--radius-sm);">
+        <p style="color:var(--text-muted);font-size:0.8rem;font-family:'JetBrains Mono',monospace;">
+          // Vulnerable code:<br>
+          eval(`parsedConfig = ${config}`);
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,67 @@
+<div class="container profile-page">
+  <div class="profile-header">
+    <div style="font-size:5rem;margin-bottom:10px;">
+      <% const avatars = { 'tony': '🤖', 'steve': '⭐', 'thor': '⚡', 'natasha': '🕷️', 'bruce': '💚', 'peter': '🕸️', 'strange': '🔮', 'carol': '🌟', 'clint': '🏹', 'admin': '👁️' }; %>
+      <%= avatars[profile.username] || '🦸' %>
+    </div>
+    <h2><%= profile.full_name || profile.username %></h2>
+    <p class="text-muted">@<%= profile.username %> · <span class="tag <%= profile.is_admin ? 'tag-admin' : 'tag-user' %>"><%= profile.role %></span></p>
+  </div>
+
+  <!-- A04: Mass Assignment hint -->
+  <div class="alert alert-warning" style="max-width:600px;margin:0 auto 30px;">
+    🎯 <strong>Mass Assignment Lab:</strong> Try adding <code>is_admin=1</code> or <code>role=admin</code> to the form body to escalate privileges!
+  </div>
+
+  <div style="max-width:600px;margin:0 auto;">
+    <% if (error) { %>
+      <div class="alert alert-danger">⚠️ <%= error %></div>
+    <% } %>
+    <% if (success) { %>
+      <div class="alert alert-success">✅ <%= success %></div>
+    <% } %>
+
+    <div class="card" style="padding:30px;">
+      <h3 style="margin-bottom:20px;">⚙️ Agent Profile Settings</h3>
+      <form action="/profile/update" method="POST">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" name="full_name" class="form-input" value="<%= profile.full_name || '' %>">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" name="email" class="form-input" value="<%= profile.email %>">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Address</label>
+          <input type="text" name="address" class="form-input" value="<%= profile.address || '' %>" placeholder="Avengers HQ location">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input type="text" name="phone" class="form-input" value="<%= profile.phone || '' %>">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Avatar URL</label>
+          <input type="text" name="avatar_url" class="form-input" value="<%= profile.avatar_url || '' %>" placeholder="URL to your hero avatar">
+          <div style="font-size:0.75rem;color:var(--text-dim);margin-top:4px;">A10: Try SSRF via this field!</div>
+        </div>
+
+        <!-- Hidden fields that mass assignment can exploit -->
+        <input type="hidden" name="is_admin" value="0">
+        <input type="hidden" name="role" value="user">
+
+        <button type="submit" class="btn btn-primary btn-lg" style="width:100%;margin-top:20px;">💾 Update Profile</button>
+      </form>
+    </div>
+
+    <div style="margin-top:20px;padding:20px;background:var(--dark-3);border:1px solid var(--border);border-radius:var(--radius-md);">
+      <h4 style="margin-bottom:12px;">🔐 Security Labs</h4>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <a href="/avatar" class="btn btn-sm btn-secondary">🖼️ SSRF Avatar Lab</a>
+        <a href="/suit-config" class="btn btn-sm btn-secondary">🔧 Suit Config Lab</a>
+        <a href="/rate-limit-demo" class="btn btn-sm btn-secondary">⏱️ Rate Limit Lab</a>
+        <a href="/integrity" class="btn btn-sm btn-secondary">📦 Integrity Lab</a>
+      </div>
+    </div>
+  </div>
+</div>

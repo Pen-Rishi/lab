@@ -1,0 +1,108 @@
+<!-- Hero Section -->
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-badge">⚡ Earth's Mightiest Marketplace</div>
+    <h1>Equip Like a<br>True Avenger</h1>
+    <p>Welcome to the Avengers Armory — the ultimate destination for heroes. From Mjolnir to Nano Gauntlets, gear up with the finest weapons, tech, and collectibles from across the Marvel Universe.</p>
+    <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">
+      <a href="/products" class="btn btn-primary btn-lg">Explore Armory →</a>
+      <a href="/lab" class="btn btn-secondary btn-lg">🔬 View Lab Guide</a>
+    </div>
+  </div>
+</section>
+
+<!-- Featured Products -->
+<section class="container" style="padding-bottom:80px;">
+  <div class="section-title">
+    <h2>⚡ Featured Items</h2>
+    <p class="subtitle">Hand-picked by Earth's Mightiest Heroes</p>
+    <div class="accent-line"></div>
+  </div>
+
+  <div class="product-grid">
+    <% featured.forEach(function(product, index) { %>
+      <a href="/products/<%= product.id %>" class="card featured-card animate-in" style="animation-delay:<%= index * 0.1 %>s;text-decoration:none;color:inherit;">
+        <div class="card-img" style="font-size:4rem;padding:40px;background:linear-gradient(135deg,var(--dark-3),var(--dark-2));">
+          <% 
+            const icons = { 'Mjolnir Replica': '🔨', "Captain America's Shield": '🛡️', 'Iron Man Arc Reactor': '💎', 'Stormbreaker Axe': '🪓', 'Black Panther Vibranium Claws': '🐱', "Hawkeye's Recurve Bow": '🏹', "Doctor Strange Sling Ring": '🔥', 'Iron Man Mark LXXXV Suit': '🤖', 'Captain America Stealth Suit': '⭐', 'Black Widow Tactical Suit': '🕷️', 'Spider-Man Web-Shooters': '🕸️', 'Ant-Man Suit (Pym Tech)': '🐜', 'Infinity Gauntlet Replica': '⛓️', 'Tesseract (Space Stone)': '💠', 'Time Stone (Eye of Agamotto)': '👁️', 'Soul Stone Prop': '🟠', 'J.A.R.V.I.S. AI Assistant': '🧠', 'Quinjet Model Kit': '✈️', 'HulkBuster Armor (Legacy)': '💪', 'Nano Gauntlet (Endgame)': '⚡', 'Captain Marvel Jacket': '🌟', "Loki's Scepter (Mind Stone)": '🔱', 'Groot Baby Pot': '🌱', 'Vibranium Sample (Raw)': '💎', 'Asgardian Mead (Premium)': '🍺' };
+          %>
+          <%= icons[product.name] || '📦' %>
+        </div>
+        <div class="featured-badge">Featured</div>
+        <div class="card-body">
+          <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
+            <h3 class="card-title" style="font-size:0.9rem;"><%= product.name %></h3>
+            <span class="card-price" style="font-size:1rem;">$<%= Number(product.price).toLocaleString() %></span>
+          </div>
+          <p class="card-text"><%= product.description.substring(0, 100) %><%= product.description.length > 100 ? '...' : '' %></p>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span class="card-category"><%= product.category %></span>
+            <span class="card-stock"><%= product.stock > 0 ? '✓ In Stock' : 'Out of Stock' %></span>
+          </div>
+        </div>
+      </a>
+    <% }) %>
+  </div>
+</section>
+
+<!-- Categories Section -->
+<section style="padding:60px 0;background:var(--dark-2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+  <div class="container">
+    <div class="section-title">
+      <h2>Shop by Category</h2>
+      <p class="subtitle">Find your perfect gear</p>
+      <div class="accent-line"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;">
+      <% const catIcons = { 'Weapons': '⚔️', 'Apparel': '👕', 'Collectibles': '🏆', 'Tech': '🔧', 'Mystic': '🔮' }; %>
+      <% categories.forEach(function(cat) { %>
+        <a href="/products?category=<%= cat.category %>" class="card" style="text-decoration:none;color:inherit;text-align:center;padding:40px 20px;">
+          <div style="font-size:3rem;margin-bottom:12px;"><%= catIcons[cat.category] || '📦' %></div>
+          <h3 style="font-family:'Orbitron',monospace;font-size:1.1rem;margin-bottom:8px;"><%= cat.category %></h3>
+          <p style="color:var(--text-muted);font-size:0.85rem;">Browse <%= cat.category.toLowerCase() %></p>
+        </a>
+      <% }) %>
+    </div>
+  </div>
+</section>
+
+<!-- About Lab Section -->
+<section style="padding:80px 0;">
+  <div class="container" style="max-width:700px;text-align:center;">
+    <div class="section-title">
+      <h2>🔬 OWASP Top 10 Lab</h2>
+      <p class="subtitle">Learn. Hack. Defend.</p>
+      <div class="accent-line"></div>
+    </div>
+    <p style="color:var(--text-muted);font-size:1rem;line-height:1.8;margin-bottom:30px;">
+      This is not just an e-commerce store — it's a deliberately vulnerable web application designed to help security enthusiasts practice exploiting the OWASP Top 10 vulnerabilities in a safe, legal environment.
+    </p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;margin-bottom:40px;">
+      <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-md);padding:20px;text-align:center;">
+        <div style="font-size:2rem;margin-bottom:8px;">🔓</div>
+        <div style="font-family:'Orbitron',monospace;font-size:0.8rem;font-weight:600;">SQL Injection</div>
+      </div>
+      <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-md);padding:20px;text-align:center;">
+        <div style="font-size:2rem;margin-bottom:8px;">👁️</div>
+        <div style="font-family:'Orbitron',monospace;font-size:0.8rem;font-weight:600;">IDOR / BOLA</div>
+      </div>
+      <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-md);padding:20px;text-align:center;">
+        <div style="font-size:2rem;margin-bottom:8px;">💉</div>
+        <div style="font-family:'Orbitron',monospace;font-size:0.8rem;font-weight:600;">XSS</div>
+      </div>
+      <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-md);padding:20px;text-align:center;">
+        <div style="font-size:2rem;margin-bottom:8px;">🕸️</div>
+        <div style="font-family:'Orbitron',monospace;font-size:0.8rem;font-weight:600;">SSRF</div>
+      </div>
+      <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-md);padding:20px;text-align:center;">
+        <div style="font-size:2rem;margin-bottom:8px;">👑</div>
+        <div style="font-family:'Orbitron',monospace;font-size:0.8rem;font-weight:600;">Broken Access</div>
+      </div>
+      <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-md);padding:20px;text-align:center;">
+        <div style="font-size:2rem;margin-bottom:8px;">🔐</div>
+        <div style="font-family:'Orbitron',monospace;font-size:0.8rem;font-weight:600;">Crypto Failures</div>
+      </div>
+    </div>
+    <a href="/lab" class="btn btn-primary btn-lg">View Full Lab Guide →</a>
+  </div>
+</section>

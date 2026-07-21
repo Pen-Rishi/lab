@@ -1,0 +1,77 @@
+<div class="container cart-page">
+  <div class="flex-between" style="margin-bottom:30px;">
+    <h2>🛒 Your Shopping Cart</h2>
+    <a href="/products" class="btn btn-secondary">← Continue Shopping</a>
+  </div>
+
+  <% if (error) { %>
+    <div class="alert alert-danger">⚠️ <%= error %></div>
+  <% } %>
+
+  <!-- A01: IDOR hint - user can view other people's carts -->
+  <div class="alert alert-info">
+    🔍 <strong>IDOR Lab:</strong> Try viewing other users' carts by adding <code>?user=2</code> or <code>?user=1</code> to the URL!
+  </div>
+
+  <% if (cartItems.length > 0) { %>
+    <div style="display:grid;grid-template-columns:1fr 320px;gap:30px;">
+      <div>
+        <% cartItems.forEach(function(item) { %>
+          <div class="cart-item">
+            <div class="cart-item-image" style="font-size:2rem;">
+              <% const icons = { 'Mjolnir Replica': '🔨', "Captain America's Shield": '🛡️', 'Iron Man Arc Reactor': '💎', 'Stormbreaker Axe': '🪓', 'Black Panther Vibranium Claws': '🐱', "Hawkeye's Recurve Bow": '🏹', "Doctor Strange Sling Ring": '🔥', 'Iron Man Mark LXXXV Suit': '🤖', 'Captain America Stealth Suit': '⭐', 'Black Widow Tactical Suit': '🕷️', 'Spider-Man Web-Shooters': '🕸️', 'Ant-Man Suit (Pym Tech)': '🐜', 'Infinity Gauntlet Replica': '⛓️', 'Tesseract (Space Stone)': '💠', 'Time Stone (Eye of Agamotto)': '👁️', 'Soul Stone Prop': '🟠', 'J.A.R.V.I.S. AI Assistant': '🧠', 'Quinjet Model Kit': '✈️', 'HulkBuster Armor (Legacy)': '💪', 'Nano Gauntlet (Endgame)': '⚡', 'Captain Marvel Jacket': '🌟', "Loki's Scepter (Mind Stone)": '🔱', 'Groot Baby Pot': '🌱', 'Vibranium Sample (Raw)': '💎', 'Asgardian Mead (Premium)': '🍺' }; %>
+              <%= icons[item.name] || '📦' %>
+            </div>
+            <div class="cart-item-info">
+              <h3><a href="/products/<%= item.product_id %>" style="color:var(--text);"><%= item.name %></a></h3>
+              <div class="cart-item-price">$<%= Number(item.price).toLocaleString() %></div>
+              <div style="color:var(--text-muted);font-size:0.85rem;">Qty: <%= item.quantity %></div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-family:'Orbitron',monospace;font-size:1.2rem;font-weight:700;color:var(--secondary);margin-bottom:8px;">
+                $<%= (item.price * item.quantity).toLocaleString() %>
+              </div>
+              <form action="/cart/remove/<%= item.id %>" method="POST">
+                <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+              </form>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+
+      <div>
+        <div class="cart-summary">
+          <h3 style="margin-bottom:20px;">Order Summary</h3>
+          <div style="display:flex;justify-content:space-between;color:var(--text-muted);font-size:0.9rem;margin-bottom:8px;">
+            <span>Items (<%= cartItems.length %>)</span>
+            <span>$<%= cartItems.reduce((s, i) => s + (i.price * i.quantity), 0).toLocaleString() %></span>
+          </div>
+          <div style="display:flex;justify-content:space-between;color:var(--text-muted);font-size:0.9rem;margin-bottom:8px;">
+            <span>Shipping</span>
+            <span>FREE (Quinjet delivery)</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;color:var(--text-muted);font-size:0.9rem;margin-bottom:20px;">
+            <span>Tax</span>
+            <span>$<%= (cartItems.reduce((s, i) => s + (i.price * i.quantity), 0) * 0.08).toFixed(2) %></span>
+          </div>
+          <hr style="border-color:var(--border);margin-bottom:20px;">
+          <div class="cart-total">
+            <span>Total</span>
+            <span>$<%= (cartItems.reduce((s, i) => s + (i.price * i.quantity), 0) * 1.08).toFixed(2) %></span>
+          </div>
+          <form action="/checkout" method="POST">
+            <input type="hidden" name="address" value="Avengers Tower, 890 Fifth Avenue, NYC">
+            <button type="submit" class="btn btn-gold btn-lg" style="width:100%;">⚡ Assemble Order</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  <% } else { %>
+    <div class="text-center" style="padding:80px 0;">
+      <div style="font-size:5rem;margin-bottom:20px;">🛒</div>
+      <h2>Your Cart is Empty</h2>
+      <p class="text-muted mt-2">Even Tony Stark started somewhere! Browse the armory and gear up!</p>
+      <a href="/products" class="btn btn-primary btn-lg mt-3">🛡️ Browse Armory</a>
+    </div>
+  <% } %>
+</div>

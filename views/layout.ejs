@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof title !== 'undefined' ? title + ' | ' : '' %><%= store.name %></title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
+</head>
+<body>
+  <!-- Security Warning Banner -->
+  <div class="security-banner">
+    <p>⚠️ <span class="highlight">SECURITY LAB</span> ⚠️ This site contains intentional vulnerabilities for educational purposes. Do not use real credentials!</p>
+  </div>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="flex-between" style="width:100%">
+      <a href="/" class="nav-brand">
+        <span class="brand-icon">⚔️</span>
+        <span>Avengers <span class="brand-accent">Armory</span></span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="/" class="<%= path === '/' ? 'active' : '' %>">Home</a></li>
+        <li><a href="/products" class="<%= path === '/products' ? 'active' : '' %>">Armory</a></li>
+        <li><a href="/lab">Lab Guide</a></li>
+        <% if (user) { %>
+          <li><a href="/cart">Cart <% if (cartCount > 0) { %><span class="cart-count"><%= cartCount %></span><% } %></a></li>
+          <li><a href="/orders">Orders</a></li>
+          <li><a href="/feedback">Feedback</a></li>
+        <% } %>
+      </ul>
+
+      <div class="nav-user">
+        <% if (user) { %>
+          <a href="/profile" class="username"><%= user.full_name || user.username %></a>
+          <a href="/cart" class="btn-icon" style="position:relative;">
+            🛒
+            <% if (cartCount > 0) { %>
+              <span class="cart-count" style="position:absolute;top:-4px;right:-4px;"><%= cartCount %></span>
+            <% } %>
+          </a>
+          <a href="/logout" class="btn btn-sm btn-secondary">Logout</a>
+        <% } else { %>
+          <a href="/login" class="btn btn-sm btn-secondary">Login</a>
+          <a href="/register" class="btn btn-sm btn-primary">Register</a>
+        <% } %>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main>
+    <%- body %>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <div>
+          <h4>⚔️ Avengers Armory</h4>
+          <p style="color:var(--text-muted);font-size:0.85rem;">Earth's Mightiest Marketplace! Equip yourself like a true hero.</p>
+        </div>
+        <div>
+          <h4>Shop</h4>
+          <a href="/products">All Products</a>
+          <a href="/products?category=Weapons">Weapons</a>
+          <a href="/products?category=Apparel">Apparel</a>
+          <a href="/products?category=Collectibles">Collectibles</a>
+          <a href="/products?category=Tech">Tech</a>
+        </div>
+        <div>
+          <h4>Lab</h4>
+          <a href="/lab">OWASP Top 10</a>
+          <a href="/debug">Debug</a>
+          <a href="/avatar">Avatar Lab</a>
+          <a href="/integrity">Integrity Lab</a>
+        </div>
+        <div>
+          <h4>Support</h4>
+          <a href="/feedback">Feedback</a>
+          <a href="/">FAQ</a>
+          <a href="/">Returns Policy</a>
+          <a href="/">Contact Shield</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© 2026 Avengers Armory Security Lab. For educational purposes only. Not affiliated with Marvel.</p>
+        <p style="margin-top:8px;color:var(--text-dim);font-size:0.75rem;">⚠️ This application contains intentional security vulnerabilities (OWASP Top 10). Do not deploy in production!</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/js/main.js"></script>
+</body>
+</html>
