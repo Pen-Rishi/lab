@@ -1,13 +1,9 @@
 <div class="container" style="padding:40px 0;">
   <div style="max-width:600px;margin:0 auto;">
     <div class="section-title">
-      <h2>📦 Insecure Deserialization Lab</h2>
-      <p class="subtitle">A08: Remote Code Execution via eval()</p>
+      <h2>📦 Data Processor</h2>
+      <p class="subtitle">Parse and process structured data</p>
       <div class="accent-line"></div>
-    </div>
-
-    <div class="alert alert-warning">
-      🎯 <strong>Insecure Deserialization Lab:</strong> The server uses <code>eval()</code> to deserialize JSON data. Try sending a payload that executes system commands!
     </div>
 
     <% if (error) { %>
@@ -25,22 +21,6 @@
 
     <div id="deserialize-result" style="display:none;"></div>
 
-    <div class="card" style="padding:24px;">
-      <h4 style="margin-bottom:12px;">💡 RCE Payload Examples</h4>
-      <div style="padding:12px;background:var(--dark-2);border-radius:var(--radius-sm);margin-bottom:12px;">
-        <p style="color:var(--text-dim);font-size:0.8rem;font-family:'JetBrains Mono',monospace;word-break:break-all;">
-          # Read a file:<br>
-          {x: require('fs').readFileSync('/etc/passwd','utf8')}<br><br>
-          # Execute a command:<br>
-          {x: require('child_process').execSync('id').toString()}<br><br>
-          # Read config:<br>
-          {x: require('fs').readFileSync('config.js','utf8')}
-        </p>
-      </div>
-      <button onclick="sendPayload('fs')" class="btn btn-sm btn-secondary">📁 Test Read /etc/passwd</button>
-      <button onclick="sendPayload('exec')" class="btn btn-sm btn-secondary" style="margin-left:8px;">💻 Test Command: id</button>
-      <button onclick="sendPayload('config')" class="btn btn-sm btn-secondary" style="margin-left:8px;">⚙️ Read config.js</button>
-    </div>
   </div>
 </div>
 
@@ -56,12 +36,10 @@ async function deserialize() {
     el.innerHTML = `<div class="card" style="padding:24px;border-color:var(--success);">
       <h4 style="margin-bottom:12px;color:var(--success);">✅ Deserialized Successfully</h4>
       <pre style="background:var(--dark-2);padding:12px;border-radius:4px;overflow-x:auto;">${JSON.stringify(result.deserialized, null, 2)}</pre>
-      <p style="color:var(--warning);font-size:0.85rem;margin-top:10px;">⚠️ ${result.note || ''}</p>
     </div>`;
   } else {
     el.innerHTML = `<div class="card" style="padding:24px;border-color:var(--danger);">
       <h4 style="color:var(--danger);margin-bottom:12px;">❌ ${result.error}</h4>
-      <p style="color:var(--text-muted);font-size:0.85rem;">${result.hint || ''}</p>
     </div>`;
   }
 }

@@ -8,11 +8,6 @@
     <p class="text-muted">@<%= profile.username %> · <span class="tag <%= profile.is_admin ? 'tag-admin' : 'tag-user' %>"><%= profile.role %></span></p>
   </div>
 
-  <!-- A04: Mass Assignment hint -->
-  <div class="alert alert-warning" style="max-width:600px;margin:0 auto 30px;">
-    🎯 <strong>Mass Assignment Lab:</strong> Try adding <code>is_admin=1</code> or <code>role=admin</code> to the form body to escalate privileges!
-  </div>
-
   <div style="max-width:600px;margin:0 auto;">
     <% if (error) { %>
       <div class="alert alert-danger">⚠️ <%= error %></div>
@@ -43,10 +38,8 @@
         <div class="form-group">
           <label class="form-label">Avatar URL</label>
           <input type="text" name="avatar_url" class="form-input" value="<%= profile.avatar_url || '' %>" placeholder="URL to your hero avatar">
-          <div style="font-size:0.75rem;color:var(--text-dim);margin-top:4px;">A10: Try SSRF via this field!</div>
         </div>
 
-        <!-- Hidden fields that mass assignment can exploit -->
         <input type="hidden" name="is_admin" value="0">
         <input type="hidden" name="role" value="user">
 
@@ -54,14 +47,5 @@
       </form>
     </div>
 
-    <div style="margin-top:20px;padding:20px;background:var(--dark-3);border:1px solid var(--border);border-radius:var(--radius-md);">
-      <h4 style="margin-bottom:12px;">🔐 Security Labs</h4>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <a href="/avatar" class="btn btn-sm btn-secondary">🖼️ SSRF Avatar Lab</a>
-        <a href="/suit-config" class="btn btn-sm btn-secondary">🔧 Suit Config Lab</a>
-        <a href="/rate-limit-demo" class="btn btn-sm btn-secondary">⏱️ Rate Limit Lab</a>
-        <a href="/integrity" class="btn btn-sm btn-secondary">📦 Integrity Lab</a>
-      </div>
-    </div>
   </div>
 </div>

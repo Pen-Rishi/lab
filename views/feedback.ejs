@@ -6,11 +6,6 @@
       <div class="accent-line"></div>
     </div>
 
-    <!-- A03: Stored XSS hint -->
-    <div class="alert alert-warning">
-      🎯 <strong>Stored XSS Lab:</strong> Try submitting a feedback message with a script payload like <code>&lt;script&gt;alert('XSS')&lt;/script&gt;</code> — it will execute every time someone views this page!
-    </div>
-
     <% if (error) { %>
       <div class="alert alert-danger">⚠️ <%= error %></div>
     <% } %>
@@ -33,7 +28,7 @@
         </div>
         <div class="form-group">
           <label class="form-label">Your Message</label>
-          <textarea name="message" class="form-textarea" placeholder="Share your feedback... (HTML tags are NOT sanitized!)" rows="4"></textarea>
+          <textarea name="message" class="form-textarea" placeholder="Share your feedback..." rows="4"></textarea>
         </div>
         <button type="submit" class="btn btn-primary">Send Feedback</button>
       </form>
@@ -51,7 +46,6 @@
               <% for (let i = 0; i < (fb.rating || 5); i++) { %>⭐<% } %>
             </span>
           </div>
-          <!-- A03: STORED XSS - message is rendered raw without escaping! -->
           <div class="review-comment"><%- fb.message %></div>
           <div style="font-size:0.75rem;color:var(--text-dim);margin-top:8px;">
             <%= new Date(fb.created_at).toLocaleDateString() %>

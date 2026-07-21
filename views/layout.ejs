@@ -8,10 +8,6 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
 </head>
 <body>
-  <!-- Security Warning Banner -->
-  <div class="security-banner">
-    <p>⚠️ <span class="highlight">SECURITY LAB</span> ⚠️ This site contains intentional vulnerabilities for educational purposes. Do not use real credentials!</p>
-  </div>
 
   <!-- Navbar -->
   <nav class="navbar">
@@ -24,7 +20,6 @@
       <ul class="nav-links">
         <li><a href="/" class="<%= path === '/' ? 'active' : '' %>">Home</a></li>
         <li><a href="/products" class="<%= path === '/products' ? 'active' : '' %>">Armory</a></li>
-        <li><a href="/lab">Lab Guide</a></li>
         <% if (user) { %>
           <li><a href="/cart">Cart <% if (cartCount > 0) { %><span class="cart-count"><%= cartCount %></span><% } %></a></li>
           <li><a href="/orders">Orders</a></li>
@@ -72,11 +67,10 @@
           <a href="/products?category=Tech">Tech</a>
         </div>
         <div>
-          <h4>Lab</h4>
-          <a href="/lab">OWASP Top 10</a>
-          <a href="/debug">Debug</a>
-          <a href="/avatar">Avatar Lab</a>
-          <a href="/integrity">Integrity Lab</a>
+          <h4>Tools</h4>
+          <a href="/avatar">Avatar</a>
+          <a href="/integrity">Packages</a>
+          <a href="/payment/checkout">Payment</a>
         </div>
         <div>
           <h4>Support</h4>
@@ -87,8 +81,7 @@
         </div>
       </div>
       <div class="footer-bottom">
-        <p>© 2026 Avengers Armory Security Lab. For educational purposes only. Not affiliated with Marvel.</p>
-        <p style="margin-top:8px;color:var(--text-dim);font-size:0.75rem;">⚠️ This application contains intentional security vulnerabilities (OWASP Top 10). Do not deploy in production!</p>
+        <p>© 2026 Avengers Armory. Not affiliated with Marvel.</p>
       </div>
     </div>
   </footer>

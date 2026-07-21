@@ -13,10 +13,9 @@ module.exports = {
   
   // PostgreSQL (Supabase)
   usePostgres: true,
-  postgresUrl: '',
-  supabaseUrl: 'https://chsmudfembonqsyxhmuh.supabase.co',
-  supabaseProjectRef: 'chsmudfembonqsyxhmuh',
-  // Read from env var first (so user can refresh without editing file), fallback to hardcoded
+  postgresUrl: process.env.POSTGRES_URL || '',
+  supabaseUrl: process.env.SUPABASE_URL || '',
+  supabaseProjectRef: process.env.SUPABASE_PROJECT_REF || '',
   supabaseMgmtToken: process.env.SUPABASE_MGMT_TOKEN || '',
 
   // Session secret - A02: Cryptographic Failure (weak/guessable secret)

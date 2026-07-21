@@ -63,7 +63,7 @@
             </div>
             <div class="form-group">
               <label class="form-label">Your Comment</label>
-              <textarea name="comment" class="form-textarea" placeholder="Share your thoughts on this item... (XSS payloads welcome!)"></textarea>
+              <textarea name="comment" class="form-textarea" placeholder="Share your thoughts on this item..."></textarea>
             </div>
             <button type="submit" class="btn btn-primary">Submit Review</button>
           </form>
@@ -79,7 +79,6 @@
                 <% for (let i = 0; i < (review.rating || 5); i++) { %>⭐<% } %>
               </span>
             </div>
-            <!-- A03: Stored XSS - user review rendered without escaping -->
             <div class="review-comment"><%- review.comment %></div>
             <div style="font-size:0.75rem;color:var(--text-dim);margin-top:8px;"><%= new Date(review.created_at).toLocaleDateString() %></div>
           </div>

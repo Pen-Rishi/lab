@@ -8,11 +8,6 @@
     <div class="alert alert-danger">⚠️ <%= error %></div>
   <% } %>
 
-  <!-- A01: IDOR hint - user can view other people's carts -->
-  <div class="alert alert-info">
-    🔍 <strong>IDOR Lab:</strong> Try viewing other users' carts by adding <code>?user=2</code> or <code>?user=1</code> to the URL!
-  </div>
-
   <% if (cartItems.length > 0) { %>
     <div style="display:grid;grid-template-columns:1fr 320px;gap:30px;">
       <div>
@@ -59,9 +54,10 @@
             <span>Total</span>
             <span>$<%= (cartItems.reduce((s, i) => s + (i.price * i.quantity), 0) * 1.08).toFixed(2) %></span>
           </div>
-          <form action="/checkout" method="POST">
+          <a href="/payment/checkout" class="btn btn-gold btn-lg" style="width:100%;display:block;text-align:center;text-decoration:none;">💳 Proceed to Payment</a>
+          <form action="/checkout" method="POST" style="margin-top:10px;">
             <input type="hidden" name="address" value="Avengers Tower, 890 Fifth Avenue, NYC">
-            <button type="submit" class="btn btn-gold btn-lg" style="width:100%;">⚡ Assemble Order</button>
+            <button type="submit" class="btn btn-secondary btn-lg" style="width:100%;">⚡ Quick Order (Skip Payment)</button>
           </form>
         </div>
       </div>

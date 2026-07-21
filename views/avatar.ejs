@@ -2,13 +2,8 @@
   <div style="max-width:600px;margin:0 auto;">
     <div class="section-title">
       <h2>🖼️ Hero Avatar</h2>
-      <p class="subtitle">Fetch your avatar from any URL (even internal ones!)</p>
+      <p class="subtitle">Fetch your avatar from any URL</p>
       <div class="accent-line"></div>
-    </div>
-
-    <!-- A10: SSRF hint -->
-    <div class="alert alert-warning">
-      🎯 <strong>SSRF Lab:</strong> Try fetching internal URLs like <code>http://localhost:3000/debug</code> or <code>file:///etc/passwd</code> to access sensitive server resources!
     </div>
 
     <% if (error) { %>
@@ -21,9 +16,6 @@
         <div class="form-group">
           <label class="form-label">Image URL</label>
           <input type="text" name="url" class="form-input" placeholder="https://example.com/avatar.jpg" value="https://i.imgur.com/placeholder.png">
-          <div style="font-size:0.75rem;color:var(--text-dim);margin-top:4px;">
-            Try: <code>http://localhost:3000/debug</code> to test SSRF!
-          </div>
         </div>
         <button type="submit" class="btn btn-primary btn-lg" style="width:100%;">🔍 Fetch Image</button>
       </form>

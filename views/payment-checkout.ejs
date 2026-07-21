@@ -1,0 +1,99 @@
+<div class="container" style="max-width:700px;margin:0 auto;padding:40px 20px;">
+  <h2>💳 Payment Checkout</h2>
+  <p class="text-muted">Secure checkout</p>
+
+  <% if (error) { %>
+    <div class="alert alert-danger">⚠️ <%= error %></div>
+  <% } %>
+  <% if (success) { %>
+    <div class="alert alert-success" style="padding:20px;background:rgba(46,204,113,0.1);border:1px solid rgba(46,204,113,0.3);border-radius:8px;">
+      <h3 style="margin-bottom:10px;">✅ Payment Processed!</h3>
+      <p><%= success %></p>
+      <div style="margin-top:15px;display:flex;gap:10px;">
+        <a href="/orders" class="btn btn-primary">📋 View Orders</a>
+        <a href="/products" class="btn btn-secondary">🛡️ Continue Shopping</a>
+      </div>
+    </div>
+  <% } %>
+
+  <% if (!success && items.length > 0) { %>
+    <div style="background:var(--dark-2);padding:20px;border-radius:8px;border:1px solid var(--border);margin-bottom:20px;">
+      <h3>Order Summary</h3>
+      <% for (const item of items) { %>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+          <span><%= item.name %> × <%= item.quantity %></span>
+          <span>$<%= (item.price * item.quantity).toFixed(2) %></span>
+        </div>
+      <% } %>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;color:var(--text-muted);font-size:0.9rem;">
+        <span>Tax (8%)</span>
+        <span>$<%= (total * 0.08).toFixed(2) %></span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:12px 0;font-weight:bold;font-size:1.2rem;border-top:1px solid var(--border);">
+        <span>Total</span>
+        <span style="color:var(--secondary);">$<%= (total * 1.08).toFixed(2) %></span>
+      </div>
+    </div>
+
+    <form action="/payment/process" method="POST" style="background:var(--dark-2);padding:25px;border-radius:8px;border:1px solid var(--border);">
+      <h3>💳 Enter Card Details</h3>
+
+      <% if (cards.length > 0) { %>
+        <div style="margin-bottom:15px;padding:12px;background:rgba(226,54,54,0.08);border:1px solid rgba(226,54,54,0.2);border-radius:6px;">
+          <strong style="font-size:0.85rem;">💾 Saved Cards:</strong>
+          <% for (const c of cards) { %>
+            <label style="display:flex;align-items:center;gap:10px;padding:8px 0;cursor:pointer;border-bottom:1px solid rgba(226,54,54,0.1);">
+              <input type="radio" name="saved_card" value="<%= c.card_number %>" data-cvv="<%= c.cvv %>" data-expiry="<%= c.expiry %>">
+              <span style="font-family:monospace;font-size:0.85rem;">
+                <%= c.card_type.toUpperCase() %> <%= c.card_number %> &bull; CVV: <%= c.cvv %> &bull; Exp: <%= c.expiry %> — <%= c.cardholder_name %>
+              </span>
+            </label>
+          <% } %>
+        </div>
+      <% } %>
+
+      <div style="margin-bottom:12px;">
+        <label style="display:block;margin-bottom:5px;font-size:0.85rem;">Cardholder Name</label>
+        <input type="text" name="cardholder_name" id="cardholder_name" class="form-input" placeholder="Nick Fury" style="width:100%;">
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="display:block;margin-bottom:5px;font-size:0.85rem;">Card Number</label>
+        <input type="text" name="card_number" id="card_number" class="form-input" placeholder="4532015112830366" autocomplete="cc-number" style="width:100%;">
+      </div>
+      <div style="display:flex;gap:12px;margin-bottom:12px;">
+        <div style="flex:1;">
+          <label style="display:block;margin-bottom:5px;font-size:0.85rem;">Expiry</label>
+          <input type="text" name="expiry" id="expiry" class="form-input" placeholder="12/27" autocomplete="cc-exp" style="width:100%;">
+        </div>
+        <div style="flex:1;">
+          <label style="display:block;margin-bottom:5px;font-size:0.85rem;">CVV</label>
+          <input type="text" name="cvv" id="cvv" class="form-input" placeholder="123" autocomplete="cc-csc" style="width:100%;">
+        </div>
+      </div>
+      <div style="margin-bottom:15px;">
+        <label style="display:block;margin-bottom:5px;font-size:0.85rem;">Billing Address</label>
+        <input type="text" name="address" class="form-input" placeholder="Avengers Tower, 890 Fifth Avenue, NYC" value="Avengers Tower, 890 Fifth Avenue, NYC" style="width:100%;">
+      </div>
+      <input type="hidden" name="amount" value="<%= (total * 1.08).toFixed(2) %>">
+      <button type="submit" class="btn btn-gold btn-lg" style="width:100%;padding:14px;font-size:1.1rem;">💳 Pay $<%= (total * 1.08).toFixed(2) %></button>
+    </form>
+
+    <script>
+      document.querySelectorAll('input[name="saved_card"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+          document.getElementById('card_number').value = this.value;
+          document.getElementById('cvv').value = this.dataset.cvv;
+          document.getElementById('expiry').value = this.dataset.expiry;
+        });
+      });
+    </script>
+  <% } else if (!success) { %>
+    <div class="text-center" style="padding:60px 0;">
+      <div style="font-size:4rem;margin-bottom:15px;">🛒</div>
+      <h3>Your cart is empty!</h3>
+      <p class="text-muted">Add items from the armory first.</p>
+      <a href="/products" class="btn btn-primary" style="margin-top:15px;">🛡️ Browse Armory</a>
+    </div>
+  <% } %>
+
+</div>

@@ -4,11 +4,6 @@
     <a href="/products" class="btn btn-secondary">← Continue Shopping</a>
   </div>
 
-  <!-- A01: IDOR hint -->
-  <div class="alert alert-info">
-    🔍 <strong>IDOR Lab:</strong> Try viewing other users' orders by adding <code>?user=2</code> or <code>?user=1</code> to the URL!
-  </div>
-
   <% if (orders.length > 0) { %>
     <% orders.forEach(function(order) { %>
       <div class="order-card">
