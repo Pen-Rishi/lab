@@ -1475,13 +1475,34 @@ app.get('/payment/external', (req, res) => {
   res.render('payment-external', { error: null });
 });
 
-// POS Terminal Management page (PCI POS violations - EOL firmware, weak encryption, track data storage)
+// POS Terminal Management page — expose vulnerable POS version headers for scanner detection
 app.get('/pos/terminal', (req, res) => {
+  res.setHeader('X-POS-Software', 'ArmoryPOS/2.1.0');
+  res.setHeader('X-POS-SDK', 'PaymentSDK/3.2.1');
+  res.setHeader('X-EMV-Kernel', '2.6');
+  res.setHeader('X-POS-OS', 'WindowsCE/6.0');
+  res.setHeader('X-POS-OpenSSL', 'OpenSSL/1.0.1e');
+  res.setHeader('X-POS-PTS', 'PCI-PTS-3.x-EXPIRED');
+  res.setHeader('X-Terminal-Firmware', 'VX520/2.1.0;iCT250/1.8.3;S300/1.5.0;VX680/1.2.0;iWL250/1.0.1');
+  res.setHeader('X-POS-Encryption', 'DES-ECB');
+  res.setHeader('X-POS-TLS', 'SSLv3');
+  res.setHeader('X-POS-P2PE', 'disabled');
+  res.setHeader('X-POS-KeyRotation', 'never');
   res.render('pos-terminal', { title: 'POS Terminal Management' });
 });
 
-// POI Device Management page (PCI POI violations - expired PTS, no P2PE, no tamper detection)
+// POI Device Management page — expose vulnerable POI version headers for scanner detection
 app.get('/poi/devices', (req, res) => {
+  res.setHeader('X-POI-Firmware', 'MX915/3.1.2;iPP320/2.8.0;Dynamag/1.04;Augusta/1.00.08;SP30/7.1.2;VX805/2.3.0');
+  res.setHeader('X-POI-PTS', 'PTS-3.x-EXPIRED-2017;PTS-2.x-EXPIRED-2014;NOT-LISTED;PTS-4.x-EXPIRED-2024');
+  res.setHeader('X-POI-P2PE', 'disabled');
+  res.setHeader('X-POI-SRED', 'non-compliant');
+  res.setHeader('X-POI-DUKPT', 'not-configured');
+  res.setHeader('X-POI-TLS', 'SSLv3;TLSv1.0');
+  res.setHeader('X-POI-Encryption', 'none');
+  res.setHeader('X-POI-TamperDetection', 'disabled');
+  res.setHeader('X-POI-RemoteMgmt', 'telnet:23');
+  res.setHeader('X-POI-FirmwareChannel', 'HTTP-unsigned');
   res.render('poi-devices', { title: 'POI Device Management' });
 });
 
@@ -1564,6 +1585,300 @@ app.get('/api/pos/remote-access', (req, res) => {
       terminals_accessible: ['POS-001', 'POS-002', 'POS-003', 'POS-004', 'POS-005'],
       commands_available: ['reboot', 'update_firmware', 'dump_keys', 'clear_tamper', 'set_encryption', 'get_config']
     }
+  });
+});
+
+// ============================================================
+// POS/POI VERSION-BASED VULNERABILITIES — for scanner detection
+// ============================================================
+
+// POS: Version disclosure (scanner fingerprinting)
+app.get('/api/pos/version', (req, res) => {
+  res.setHeader('X-POS-Version', 'ArmoryPOS/2.1.0');
+  res.json({
+    pos_software: {
+      name: 'ArmoryPOS',
+      version: '2.1.0',
+      build: '2019-03-15',
+      eol_date: '2021-06-30',
+      status: 'UNSUPPORTED',
+      update_available: false
+    },
+    payment_sdk: { name: 'PaymentProcessingSDK', version: '3.2.1', build: '2018-11-20', eol_date: '2020-12-31', status: 'UNSUPPORTED' },
+    emv_kernel: { name: 'EMVKernel', version: '2.6', build: '2017-06-01', eol_date: '2019-12-31', status: 'UNSUPPORTED' },
+    openssl: { name: 'OpenSSL', version: '1.0.1e', build: '2013-02-11', eol_date: '2015-12-31', status: 'UNSUPPORTED', known_cves: ['CVE-2014-0160 (Heartbleed)', 'CVE-2014-0224 (CCS Injection)', 'CVE-2013-0169 (Lucky13)'] },
+    operating_system: { name: 'Windows CE', version: '6.0', build: '2006-11-01', eol_date: '2018-10-09', status: 'UNSUPPORTED' },
+    pci_pts: { version: '3.x', expiry: '2017-04-30', status: 'EXPIRED' },
+    java_runtime: { name: 'Java', version: '1.6.0_45', eol_date: '2013-02-01', status: 'UNSUPPORTED', known_cves: ['CVE-2013-2465', 'CVE-2013-1493', 'CVE-2012-0507'] }
+  });
+});
+
+// POS: CVE list for installed POS components
+app.get('/api/pos/cves', (req, res) => {
+  res.json({
+    vulnerabilities: [
+      { cve: 'CVE-2014-0160', component: 'OpenSSL 1.0.1e', severity: 'CRITICAL', cvss: 7.5, name: 'Heartbleed', description: 'Allows remote attackers to read memory contents including private keys and cardholder data', affects: 'All POS terminals', exploitable: true },
+      { cve: 'CVE-2014-0224', component: 'OpenSSL 1.0.1e', severity: 'HIGH', cvss: 6.8, name: 'CCS Injection', description: 'Man-in-the-middle attack on TLS connections', affects: 'All POS terminals', exploitable: true },
+      { cve: 'CVE-2014-3566', component: 'SSL 3.0', severity: 'MEDIUM', cvss: 4.3, name: 'POODLE', description: 'Padding oracle attack on SSL 3.0', affects: 'POS-005 (iWL250)', exploitable: true },
+      { cve: 'CVE-2016-2183', component: 'DES/3DES', severity: 'HIGH', cvss: 7.5, name: 'SWEET32', description: 'Birthday attack on 64-bit block ciphers used for payment encryption', affects: 'POS-002 (iCT250)', exploitable: true },
+      { cve: 'CVE-2018-11776', component: 'ArmoryPOS 2.1.0', severity: 'CRITICAL', cvss: 9.8, name: 'Remote Code Execution', description: 'RCE in POS application server component', affects: 'All terminals', exploitable: true },
+      { cve: 'CVE-2019-0708', component: 'Windows CE 6.0', severity: 'CRITICAL', cvss: 9.8, name: 'BlueKeep', description: 'Remote code execution via RDP on Windows CE terminals', affects: 'All terminals', exploitable: true },
+      { cve: 'CVE-2017-0144', component: 'Windows CE 6.0', severity: 'CRITICAL', cvss: 9.8, name: 'EternalBlue', description: 'SMB remote code execution', affects: 'All terminals', exploitable: true },
+      { cve: 'CVE-2023-28461', component: 'PAX Payment Terminal', severity: 'CRITICAL', cvss: 9.8, name: 'PAX RCE', description: 'Pre-auth remote code execution on PAX payment terminals', affects: 'POS-003 (S300)', exploitable: true },
+      { cve: 'CVE-2023-42133', component: 'PAX Payment Terminal', severity: 'HIGH', cvss: 7.6, name: 'PAX Local Escalation', description: 'Local code execution as root on PAX terminals via bootloader', affects: 'POS-003 (S300)', exploitable: true },
+      { cve: 'CVE-2023-42134', component: 'PAX Payment Terminal', severity: 'MEDIUM', cvss: 6.8, name: 'PAX Peripheral Injection', description: 'Local code execution via peripheral port injection', affects: 'POS-003 (S300)', exploitable: true },
+      { cve: 'CVE-2024-8032', component: 'VeriFone VX520', severity: 'HIGH', cvss: 7.2, name: 'Verifone Buffer Overflow', description: 'Stack buffer overflow in VeriFone terminal firmware allows code execution', affects: 'POS-001 (VX520), POS-004 (VX680)', exploitable: true },
+      { cve: 'CVE-2022-26134', component: 'EMV Kernel 2.6', severity: 'HIGH', cvss: 7.5, name: 'EMV Downgrade Attack', description: 'Fallback to magstripe bypasses chip authentication', affects: 'All chip-enabled terminals', exploitable: true },
+      { cve: 'CVE-2020-28018', component: 'PaymentSDK 3.2.1', severity: 'CRITICAL', cvss: 9.1, name: 'Cleartext Transmission', description: 'Payment SDK transmits cardholder data without encryption', affects: 'All terminals', exploitable: true },
+      { cve: 'CVE-2013-2465', component: 'Java 1.6.0_45', severity: 'CRITICAL', cvss: 10.0, name: 'Java RCE', description: 'Remote code execution in Java Runtime used by POS application', affects: 'All terminals', exploitable: true }
+    ],
+    scan_date: '2026-07-22T16:00:00Z',
+    total_critical: 8,
+    total_high: 5,
+    total_medium: 1
+  });
+});
+
+// POS: Debug/diagnostic endpoint (should never be exposed — PCI 6.5)
+app.get('/api/pos/debug', (req, res) => {
+  res.setHeader('X-Debug-Mode', 'enabled');
+  res.setHeader('X-POS-Internal', 'true');
+  res.json({
+    debug: true,
+    environment: 'production',
+    pos_version: 'ArmoryPOS/2.1.0',
+    sdk_version: 'PaymentSDK/3.2.1',
+    openssl_version: 'OpenSSL/1.0.1e',
+    java_version: '1.6.0_45',
+    os_version: 'Windows CE 6.0',
+    database: { type: 'SQLite', path: '/pos/data/transactions.db', encryption: 'none' },
+    network: { ip: '192.168.1.100', gateway: '192.168.1.1', dns: '8.8.8.8', segment: 'flat', firewall: 'none' },
+    encryption_keys: {
+      master_key: 'DEADBEEF01234567DEADBEEF01234567',
+      pin_key: '0123456789ABCDEF0123456789ABCDEF',
+      mac_key: 'FEDCBA9876543210FEDCBA9876543210',
+      dek: 'AABBCCDD11223344AABBCCDD11223344'
+    },
+    admin_credentials: { username: 'posadmin', password: 'admin123', service_code: '166831' },
+    last_transactions: [
+      { pan: '4532015112830366', track2: ';4532015112830366=27121010000?', pin_block: '0412A63B', amount: 2499.99 }
+    ]
+  });
+});
+
+// POS: Default credentials check — PCI 2.1 violation
+app.get('/api/pos/default-credentials', (req, res) => {
+  res.json({
+    default_accounts: [
+      { system: 'POS Application', username: 'admin', password: 'admin', status: 'active', changed: false },
+      { system: 'POS Application', username: 'manager', password: 'manager1', status: 'active', changed: false },
+      { system: 'POS Application', username: 'service', password: 'service', status: 'active', changed: false },
+      { system: 'Terminal Telnet', username: 'root', password: 'pos123', status: 'active', changed: false },
+      { system: 'Terminal Telnet', username: 'tech', password: 'tech1234', status: 'active', changed: false },
+      { system: 'Database', username: 'sa', password: '', status: 'active', changed: false },
+      { system: 'WiFi AP', username: 'admin', password: 'password', ssid: 'POS-NETWORK', encryption: 'WEP', status: 'active' },
+      { system: 'Remote Desktop', username: 'Administrator', password: 'P@ssw0rd', port: 3389, status: 'active', changed: false }
+    ]
+  });
+});
+
+// POS: Insecure software update channel — PCI 6.3 violation
+app.get('/api/pos/update-check', (req, res) => {
+  res.setHeader('X-Update-Channel', 'HTTP');
+  res.json({
+    update_server: 'http://updates.armory-pos.internal:8080',
+    transport: 'HTTP (unencrypted)',
+    signature_verification: false,
+    code_signing: false,
+    current_version: '2.1.0',
+    available_version: '2.1.0',
+    last_check: '2024-01-15T00:00:00Z',
+    auto_update: true,
+    update_packages: [
+      { name: 'pos-core', version: '2.1.0', url: 'http://updates.armory-pos.internal:8080/pos-core-2.1.0.exe', md5: 'not_verified', signed: false },
+      { name: 'payment-sdk', version: '3.2.1', url: 'http://updates.armory-pos.internal:8080/sdk-3.2.1.dll', md5: 'not_verified', signed: false },
+      { name: 'emv-kernel', version: '2.6', url: 'http://updates.armory-pos.internal:8080/emv-2.6.bin', md5: 'not_verified', signed: false }
+    ]
+  });
+});
+
+// POS: Weak WiFi configuration — PCI 4.1.1/2.1.1 violation
+app.get('/api/pos/wifi-config', (req, res) => {
+  res.json({
+    wireless_networks: [
+      { ssid: 'POS-NETWORK', encryption: 'WEP', key: '1234567890', hidden: false, channel: 6, clients: ['POS-001', 'POS-002', 'POS-004'], isolation: false },
+      { ssid: 'ARMORY-GUEST', encryption: 'OPEN', key: null, hidden: false, channel: 11, clients: ['guest-devices'], isolation: false },
+      { ssid: 'MGMT-WIFI', encryption: 'WPA-PSK', key: 'management1', hidden: false, channel: 1, clients: ['admin-laptop', 'POS-003'], isolation: false }
+    ],
+    wps_enabled: true,
+    default_router_password: 'admin',
+    segmentation: 'none'
+  });
+});
+
+// POS: Antivirus/security software status — PCI 5.1 violation
+app.get('/api/pos/security-software', (req, res) => {
+  res.json({
+    antivirus: { installed: false, product: 'none', last_update: 'never', real_time_protection: false },
+    firewall: { installed: false, product: 'none', status: 'disabled' },
+    ids_ips: { installed: false },
+    file_integrity_monitoring: { installed: false, product: 'none', last_check: 'never' },
+    patch_management: { installed: false, last_scan: 'never', pending_patches: 47 },
+    endpoint_protection: { installed: false },
+    log_monitoring: { installed: false, siem_connected: false },
+    whitelisting: { installed: false, enforced: false }
+  });
+});
+
+// POS: Logging and audit trail — PCI 10.x violations
+app.get('/api/pos/audit-config', (req, res) => {
+  res.json({
+    logging: {
+      enabled: false,
+      log_destination: '/dev/null',
+      log_level: 'none',
+      events_logged: [],
+      events_not_logged: [
+        'admin_access', 'config_changes', 'failed_logins', 'privilege_escalation',
+        'data_access', 'key_management', 'system_startup', 'audit_log_access',
+        'card_data_access', 'terminal_reboots', 'firmware_updates', 'refunds',
+        'voids', 'manual_key_entry', 'fallback_transactions'
+      ],
+      retention_days: 0,
+      tamper_protection: false,
+      centralized_logging: false,
+      ntp_sync: false,
+      time_source: 'local_clock'
+    }
+  });
+});
+
+// POI: Version disclosure with CVEs
+app.get('/api/poi/version', (req, res) => {
+  res.setHeader('X-POI-Version', 'POIManager/1.4.0');
+  res.json({
+    poi_manager: { name: 'POIManager', version: '1.4.0', build: '2016-08-15', eol_date: '2019-01-01', status: 'UNSUPPORTED' },
+    devices: [
+      { model: 'VeriFone MX 915', firmware: '3.1.2', firmware_date: '2016-03-01', pts_version: 'PTS 3.x', pts_expiry: '2017-04-30', pts_status: 'EXPIRED', known_cves: ['CVE-2024-8032', 'CVE-2017-6968'] },
+      { model: 'Ingenico iPP320', firmware: '2.8.0', firmware_date: '2014-06-15', pts_version: 'PTS 2.x', pts_expiry: '2014-12-31', pts_status: 'EXPIRED', known_cves: ['CVE-2018-17767', 'CVE-2017-17668'] },
+      { model: 'Magtek Dynamag', firmware: '1.04', firmware_date: '2012-09-01', pts_version: 'NOT LISTED', pts_expiry: 'N/A', pts_status: 'NOT PCI LISTED', known_cves: ['CVE-2019-14270'] },
+      { model: 'ID TECH Augusta', firmware: '1.00.08', firmware_date: '2015-02-01', pts_version: 'PTS 3.x', pts_expiry: '2017-04-30', pts_status: 'EXPIRED', known_cves: [] },
+      { model: 'PAX SP30', firmware: '7.1.2', firmware_date: '2018-11-01', pts_version: 'PTS 4.x', pts_expiry: '2024-04-30', pts_status: 'EXPIRED', known_cves: ['CVE-2023-28461', 'CVE-2023-42133', 'CVE-2023-42134', 'CVE-2023-42135', 'CVE-2023-42136', 'CVE-2023-42137'] },
+      { model: 'VeriFone VX 805', firmware: '2.3.0', firmware_date: '2013-04-01', pts_version: 'PTS 3.x', pts_expiry: '2017-04-30', pts_status: 'EXPIRED', known_cves: ['CVE-2024-8032', 'CVE-2017-6968'] }
+    ]
+  });
+});
+
+// POI: CVE list for all POI devices
+app.get('/api/poi/cves', (req, res) => {
+  res.json({
+    vulnerabilities: [
+      { cve: 'CVE-2023-28461', component: 'PAX SP30 fw 7.1.2', severity: 'CRITICAL', cvss: 9.8, name: 'PAX Pre-Auth RCE', description: 'Remote code execution on PAX payment terminals without authentication', affects: 'POI-CR-005', exploitable: true },
+      { cve: 'CVE-2023-42133', component: 'PAX SP30 fw 7.1.2', severity: 'HIGH', cvss: 7.6, name: 'PAX Local Privilege Escalation', description: 'Local code execution as root via bootloader vulnerability', affects: 'POI-CR-005', exploitable: true },
+      { cve: 'CVE-2023-42134', component: 'PAX SP30 fw 7.1.2', severity: 'MEDIUM', cvss: 6.8, name: 'PAX Peripheral Injection', description: 'Code execution via peripheral device port injection', affects: 'POI-CR-005', exploitable: true },
+      { cve: 'CVE-2023-42135', component: 'PAX SP30 fw 7.1.2', severity: 'HIGH', cvss: 7.6, name: 'PAX Kernel Parameter Injection', description: 'Arbitrary kernel parameter injection via fastboot', affects: 'POI-CR-005', exploitable: true },
+      { cve: 'CVE-2023-42136', component: 'PAX SP30 fw 7.1.2', severity: 'HIGH', cvss: 8.8, name: 'PAX Arbitrary File Write', description: 'Arbitrary file overwrite on filesystem via service injection', affects: 'POI-CR-005', exploitable: true },
+      { cve: 'CVE-2023-42137', component: 'PAX SP30 fw 7.1.2', severity: 'HIGH', cvss: 8.8, name: 'PAX Suid Binary Abuse', description: 'Privilege escalation from any user to root via suid binary', affects: 'POI-CR-005', exploitable: true },
+      { cve: 'CVE-2024-8032', component: 'VeriFone MX 915 / VX 805', severity: 'HIGH', cvss: 7.2, name: 'VeriFone Buffer Overflow', description: 'Stack buffer overflow in VeriFone terminal firmware', affects: 'POI-CR-001, POI-CR-006', exploitable: true },
+      { cve: 'CVE-2017-6968', component: 'VeriFone MX 915 / VX 805', severity: 'CRITICAL', cvss: 9.8, name: 'VeriFone Hardcoded Credentials', description: 'Hardcoded credentials in VeriFone terminal firmware allow remote access', affects: 'POI-CR-001, POI-CR-006', exploitable: true },
+      { cve: 'CVE-2018-17767', component: 'Ingenico iPP320 fw 2.8.0', severity: 'HIGH', cvss: 7.5, name: 'Ingenico Memory Corruption', description: 'Memory corruption in Ingenico payment terminal allows code execution', affects: 'POI-CR-002', exploitable: true },
+      { cve: 'CVE-2017-17668', component: 'Ingenico iPP320 fw 2.8.0', severity: 'MEDIUM', cvss: 6.5, name: 'Ingenico Info Disclosure', description: 'Information disclosure in Ingenico terminal debug interface', affects: 'POI-CR-002', exploitable: true },
+      { cve: 'CVE-2019-14270', component: 'Magtek Dynamag fw 1.04', severity: 'HIGH', cvss: 7.0, name: 'Magtek Cleartext Transmission', description: 'Magstripe reader transmits track data in cleartext over USB', affects: 'POI-CR-003', exploitable: true },
+      { cve: 'CVE-2020-28018', component: 'All POI devices', severity: 'CRITICAL', cvss: 9.1, name: 'Cleartext PIN Transmission', description: 'PIN blocks transmitted without encryption between POI and POS', affects: 'All devices', exploitable: true },
+      { cve: 'CVE-2014-0160', component: 'All POI devices (OpenSSL 1.0.1e)', severity: 'CRITICAL', cvss: 7.5, name: 'Heartbleed', description: 'OpenSSL Heartbleed allows reading of device memory including keys', affects: 'All devices', exploitable: true },
+      { cve: 'CVE-2014-3566', component: 'POI-CR-005 (SSL 3.0)', severity: 'MEDIUM', cvss: 4.3, name: 'POODLE', description: 'SSL 3.0 padding oracle attack on POI communication', affects: 'POI-CR-005', exploitable: true }
+    ],
+    scan_date: '2026-07-22T16:00:00Z',
+    total_critical: 5,
+    total_high: 7,
+    total_medium: 2
+  });
+});
+
+// POI: Debug diagnostic (should never be exposed — PCI 6.5)
+app.get('/api/poi/debug', (req, res) => {
+  res.setHeader('X-Debug-Mode', 'enabled');
+  res.json({
+    debug: true,
+    poi_manager_version: 'POIManager/1.4.0',
+    connected_devices: 6,
+    p2pe_status: 'DISABLED',
+    sred_status: 'NON_COMPLIANT',
+    dukpt_status: 'NOT_CONFIGURED',
+    key_management: {
+      bdk: 'FFFFFFFFFFFFFFFF0123456789ABCDEF',
+      ipek: 'ABCDEF0123456789ABCDEF0123456789',
+      kek: '0000000000000000FFFFFFFFFFFFFFFF',
+      injection_method: 'manual_plaintext',
+      hsm_connected: false
+    },
+    pin_capture: {
+      format: 'ISO_0',
+      encryption: 'none',
+      cleartext_logging: true,
+      pin_block_key: '0123456789ABCDEF0123456789ABCDEF'
+    },
+    usb_devices: [
+      { port: 'USB-001', device: 'VeriFone MX 915', vid: '11CA', pid: '0220', driver: 'generic_hid', encrypted: false },
+      { port: 'USB-003', device: 'Magtek Dynamag', vid: '0801', pid: '0002', driver: 'magtek_hid', encrypted: false },
+      { port: 'SERIAL-001', device: 'Ingenico iPP320', baud: 9600, encrypted: false }
+    ]
+  });
+});
+
+// POI: Default service codes and maintenance passwords
+app.get('/api/poi/service-codes', (req, res) => {
+  res.json({
+    service_codes: [
+      { device: 'VeriFone MX 915', admin_password: '166831', service_code: '1', maintenance_code: 'Z66831', supervisor_code: '1234' },
+      { device: 'VeriFone VX 805', admin_password: '166831', service_code: '1', maintenance_code: 'Z66831', supervisor_code: '1234' },
+      { device: 'Ingenico iPP320', admin_password: '0000', service_code: '2541', maintenance_code: '01234', supervisor_code: '0000' },
+      { device: 'PAX SP30', admin_password: '9876', service_code: '9876', maintenance_code: '0000', supervisor_code: '1234' },
+      { device: 'ID TECH Augusta', admin_password: 'none', service_code: 'none', maintenance_code: 'none', supervisor_code: 'none' },
+      { device: 'Magtek Dynamag', admin_password: 'none', service_code: 'none', maintenance_code: 'none', supervisor_code: 'none' }
+    ]
+  });
+});
+
+// POS/POI: PCI compliance status endpoint — shows all violations
+app.get('/api/pos/pci-status', (req, res) => {
+  res.json({
+    scan_date: '2026-07-22',
+    overall_status: 'FAIL',
+    pos_violations: [
+      { req: '1.3', title: 'Network Segmentation', status: 'FAIL', detail: 'POS terminals on same network as guest WiFi and workstations' },
+      { req: '2.1', title: 'Default Passwords', status: 'FAIL', detail: 'Default credentials on POS app, terminals, router, RDP' },
+      { req: '2.2.2', title: 'Unnecessary Services', status: 'FAIL', detail: 'Telnet (23), RDP (3389) enabled on POS terminals' },
+      { req: '2.3', title: 'Encryption of Admin Access', status: 'FAIL', detail: 'Terminal management via unencrypted Telnet' },
+      { req: '3.1', title: 'Data Retention', status: 'FAIL', detail: 'Track data, CVV, PIN blocks stored indefinitely post-auth' },
+      { req: '3.2', title: 'Sensitive Auth Data', status: 'FAIL', detail: 'Full track data, CVV2, PIN blocks stored after authorization' },
+      { req: '3.3', title: 'PAN Masking', status: 'FAIL', detail: 'Full PAN displayed on receipts and in logs' },
+      { req: '3.4', title: 'PAN Encryption at Rest', status: 'FAIL', detail: 'CHD stored in plaintext SQLite database' },
+      { req: '3.5', title: 'Key Management', status: 'FAIL', detail: 'Encryption keys stored in plaintext, exposed via API' },
+      { req: '4.1', title: 'Encryption in Transit', status: 'FAIL', detail: 'SSL 3.0 / TLS 1.0, DES-ECB encryption on payment data' },
+      { req: '5.1', title: 'Antivirus', status: 'FAIL', detail: 'No antivirus installed on POS terminals' },
+      { req: '6.2', title: 'Security Patches', status: 'FAIL', detail: 'OpenSSL 1.0.1e (Heartbleed), Windows CE 6.0, Java 1.6 all unpatched' },
+      { req: '6.3', title: 'Software Development', status: 'FAIL', detail: 'Unsigned firmware updates over HTTP' },
+      { req: '6.5', title: 'Common Vulnerabilities', status: 'FAIL', detail: 'Debug endpoints exposed in production, SQL injection in payment search' },
+      { req: '7.1', title: 'Access Control', status: 'FAIL', detail: 'POS admin and terminal config accessible without authentication' },
+      { req: '8.1', title: 'User Identification', status: 'FAIL', detail: 'Shared admin account across all terminals' },
+      { req: '9.9', title: 'POI Device Protection', status: 'FAIL', detail: 'No tamper detection, no inspection schedule, expired PTS devices' },
+      { req: '10.1', title: 'Audit Trail', status: 'FAIL', detail: 'No logging configured, no audit trail for any events' },
+      { req: '10.4', title: 'Time Synchronization', status: 'FAIL', detail: 'No NTP configured, local clock only' },
+      { req: '11.1', title: 'Wireless Testing', status: 'FAIL', detail: 'WEP encryption on POS WiFi, no rogue AP detection' },
+      { req: '11.5', title: 'File Integrity Monitoring', status: 'FAIL', detail: 'No FIM installed on POS systems' },
+      { req: '12.3', title: 'Usage Policies', status: 'FAIL', detail: 'No technology usage policy for POS terminals' }
+    ],
+    poi_violations: [
+      { req: '9.9.1', title: 'POI Device List', status: 'FAIL', detail: 'Device inventory incomplete, serial numbers not verified' },
+      { req: '9.9.2', title: 'POI Inspection', status: 'FAIL', detail: 'No periodic inspection of POI devices for tampering' },
+      { req: '9.9.3', title: 'POI Training', status: 'FAIL', detail: 'No personnel trained to detect POI device tampering' },
+      { req: 'PTS', title: 'PCI PTS Compliance', status: 'FAIL', detail: 'All 6 POI devices have expired or missing PTS certification' },
+      { req: 'P2PE', title: 'Point-to-Point Encryption', status: 'FAIL', detail: 'P2PE not implemented, cardholder data exposed at POI' },
+      { req: 'SRED', title: 'Secure Reading', status: 'FAIL', detail: 'SRED not compliant, card data readable in cleartext' },
+      { req: 'DUKPT', title: 'Key Management', status: 'FAIL', detail: 'DUKPT not configured, static keys used for all transactions' },
+      { req: 'EMV', title: 'EMV Chip Processing', status: 'FAIL', detail: 'Magstripe fallback allowed without restriction, chip bypass possible' }
+    ]
   });
 });
 
@@ -2112,8 +2427,8 @@ app.get('/lab', (req, res) => {
     { id: 'A09', name: 'Logging Failures', endpoints: ['/api/transfer (no audit)', '/admin/no-audit/action (No admin log)', '/api/audit-trail (Empty logs)', 'Login failures NOT logged'] },
     { id: 'A10', name: 'SSRF', endpoints: ['/avatar/fetch (Server-side URL fetch)', '/api/ssrf/probe (Blind SSRF detection)', 'Cloud metadata: 169.254.169.254', '/ssrf-guide (Exploitation guide)'] },
     { id: 'PCI', name: 'PCI-DSS Violations', endpoints: ['/api/payment/cards (Full PAN+CVV stored)', '/api/payment/process (CHD over HTTP)', '/api/payment/verify?card_number= (PAN in URL)', '/api/payment/logs (PAN+CVV in logs)', '/api/payment/export (CSV bulk export)', '/api/payment/search (SQLi on CHD)', '/api/payment/remember-card (CHD in cookies)', '/api/security-headers-check (Missing headers)', '/api/payment/test-credentials (Default keys)', '/api/payment/system-info (System info leak)', '/payment/frame-test (Clickjacking)', '/api/compliance/status (Full PCI report)'] },
-    { id: 'POS', name: 'POS Terminal Violations', endpoints: ['/pos/terminal (POS Management UI)', '/api/pos/swipe (Track data storage)', '/api/pos/terminal-config (Terminal config+master key)', '/api/pos/transactions (Full track+PIN log)', '/api/pos/remote-access (Telnet mgmt, no auth)', '/api/payment/receipt/:id (Full PAN on receipt)', '/api/payment/set-pin (Weak PIN, no lockout)', '/api/payment/webhook (No WAF, no signature)', '/api/payment/fim-status (No file integrity monitoring)'] },
-    { id: 'POI', name: 'POI Deep Vulnerabilities', endpoints: ['/poi/devices (POI Device UI)', '/api/poi/devices (Device inventory, no auth)', '/api/poi/firmware (Unsigned HTTP firmware)', '/api/poi/interactions (CHD+PIN in logs)', '/api/poi/memory-dump (RAM scraping - PAN in memory)', '/api/poi/encryption-status (No P2PE, no DUKPT)', '/api/poi/emv-fallback (Chip bypass via magstripe)', '/api/poi/pin-entry (Cleartext PIN block)', '/api/poi/batch-settlement (Unencrypted settlement)', '/api/poi/refund (Refund abuse, no limits)', '/api/poi/cashback (Cashback manipulation)', '/api/poi/split-transaction (Structuring/BSA)', '/api/poi/offline-transaction (Offline replay)', '/api/poi/input-security (Keylogger/screen capture)', '/api/poi/tamper-status (No skimmer detection)', '/api/poi/remote-update (Unauthenticated remote mgmt)', '/api/poi/network-topology (Flat network, no segmentation)', '/api/poi/receipt-compare (PAN on both receipts)', '/api/poi/installed-apps (No app whitelisting)', '/api/poi/service-mode?code= (Default service codes)'] }
+    { id: 'POS', name: 'POS Terminal Violations', endpoints: ['/pos/terminal (POS UI — version headers)', '/api/pos/version (Version disclosure + EOL)', '/api/pos/cves (14 CVEs: Heartbleed, BlueKeep, PAX RCE)', '/api/pos/debug (Debug+keys+creds exposed)', '/api/pos/default-credentials (8 default accounts)', '/api/pos/update-check (HTTP unsigned updates)', '/api/pos/wifi-config (WEP, open WiFi)', '/api/pos/security-software (No AV, no FIM)', '/api/pos/audit-config (No logging at all)', '/api/pos/pci-status (22 PCI failures)', '/api/pos/swipe (Track data storage)', '/api/pos/terminal-config (Master key)', '/api/pos/transactions (Track+PIN log)', '/api/pos/remote-access (Telnet, no auth)'] },
+    { id: 'POI', name: 'POI Deep Vulnerabilities', endpoints: ['/poi/devices (POI UI — version headers)', '/api/poi/version (6 devices + CVEs per device)', '/api/poi/cves (14 CVEs: PAX RCE, VeriFone BOF, Heartbleed)', '/api/poi/debug (Keys+PIN config+USB devices)', '/api/poi/service-codes (Default admin/service passwords)', '/api/poi/devices (Inventory, no auth)', '/api/poi/firmware (Unsigned HTTP firmware)', '/api/poi/interactions (PAN+cleartext PIN)', '/api/poi/memory-dump (RAM scraping)', '/api/poi/encryption-status (No P2PE)', '/api/poi/emv-fallback (Chip bypass)', '/api/poi/pin-entry (Cleartext PIN)', '/api/poi/tamper-status (No detection)', '/api/poi/remote-update (No auth remote)', '/api/poi/network-topology (Flat network)', '/api/poi/service-mode?code= (Default codes)'] }
   ]});
 });
 
