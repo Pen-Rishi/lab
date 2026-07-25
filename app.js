@@ -1475,6 +1475,98 @@ app.get('/payment/external', (req, res) => {
   res.render('payment-external', { error: null });
 });
 
+// POS Terminal Management page (PCI POS violations - EOL firmware, weak encryption, track data storage)
+app.get('/pos/terminal', (req, res) => {
+  res.render('pos-terminal', { title: 'POS Terminal Management' });
+});
+
+// POI Device Management page (PCI POI violations - expired PTS, no P2PE, no tamper detection)
+app.get('/poi/devices', (req, res) => {
+  res.render('poi-devices', { title: 'POI Device Management' });
+});
+
+// POI: Device inventory API (no auth required — PCI 7.1 violation)
+app.get('/api/poi/devices', (req, res) => {
+  res.json({
+    devices: [
+      { id: 'POI-CR-001', model: 'VeriFone MX 915', type: 'PIN Pad', firmware: 'v3.1.2', pts_version: 'PTS 3.x', pts_expiry: '2017-04-30', status: 'active', connection: 'USB', encryption: 'none', p2pe: false, sred: false, location: 'Tower Lobby Register 1', serial: 'VFM915-2016-00482', last_inspection: 'never' },
+      { id: 'POI-CR-002', model: 'Ingenico iPP320', type: 'PIN Pad', firmware: 'v2.8.0', pts_version: 'PTS 2.x', pts_expiry: '2014-12-31', status: 'active', connection: 'RS-232', encryption: 'none', p2pe: false, sred: false, location: 'Wakanda Register 1', serial: 'IGN320-2014-01293', last_inspection: 'never' },
+      { id: 'POI-CR-003', model: 'Magtek Dynamag', type: 'Magstripe Reader', firmware: 'v1.04', pts_version: 'Not Listed', pts_expiry: 'N/A', status: 'active', connection: 'USB HID', encryption: 'none', p2pe: false, sred: false, location: 'Asgard Gift Shop', serial: 'MGT-DYN-2012-00055', last_inspection: 'never' },
+      { id: 'POI-CR-004', model: 'ID TECH Augusta', type: 'EMV + Magstripe', firmware: 'v1.00.08', pts_version: 'PTS 3.x', pts_expiry: '2017-04-30', status: 'maintenance', connection: 'USB', encryption: 'partial_SRED', p2pe: false, sred: false, location: 'Stark Cafe', serial: 'IDT-AUG-2015-00831', last_inspection: 'never' },
+      { id: 'POI-CR-005', model: 'PAX SP30', type: 'PIN Pad + NFC', firmware: 'v7.1.2', pts_version: 'PTS 4.x', pts_expiry: '2024-04-30', status: 'active', connection: 'Ethernet', encryption: 'TLS_1.0', p2pe: false, sred: false, location: 'S.H.I.E.L.D. Helicarrier', serial: 'PAX-SP30-2018-02104', last_inspection: 'never' },
+      { id: 'POI-CR-006', model: 'VeriFone VX 805', type: 'PIN Pad', firmware: 'v2.3.0', pts_version: 'PTS 3.x', pts_expiry: '2017-04-30', status: 'active', connection: 'RS-232', encryption: 'none', p2pe: false, sred: false, location: 'Xavier School Branch', serial: 'VFX805-2013-00198', last_inspection: 'never' }
+    ],
+    security_config: {
+      p2pe_enabled: false,
+      sred_compliant: false,
+      dukpt_configured: false,
+      pin_block_format: 'ISO_0',
+      data_at_rest_encryption: 'none',
+      tamper_detection: false,
+      inspection_schedule: 'none',
+      firmware_update_channel: 'http',
+      firmware_signature_check: false,
+      network_tls_version: 'SSL_3.0',
+      certificate_validation: false,
+      network_segmentation: false,
+      remote_management_protocol: 'telnet'
+    }
+  });
+});
+
+// POI: Firmware download manifest (unsigned, over HTTP — PCI 6.3 violation)
+app.get('/api/poi/firmware', (req, res) => {
+  res.json({
+    firmware_server: 'http://firmware.armory-pos.internal',
+    signature_verification: false,
+    transport: 'HTTP (unencrypted)',
+    packages: [
+      { device: 'VeriFone MX 915', current: '3.1.2', available: '3.1.2', url: 'http://firmware.armory-pos.internal/vx-3.1.2.bin', sha256: 'not_verified' },
+      { device: 'Ingenico iPP320', current: '2.8.0', available: '2.8.0', url: 'http://firmware.armory-pos.internal/ipp-2.8.0.bin', sha256: 'not_verified' },
+      { device: 'Magtek Dynamag', current: '1.04', available: 'EOL', url: null, sha256: null },
+      { device: 'PAX SP30', current: '7.1.2', available: '7.1.2', url: 'http://firmware.armory-pos.internal/pax-7.1.2.bin', sha256: 'not_verified' }
+    ]
+  });
+});
+
+// POI: Interaction log with full CHD (PCI 3.1/3.2 violation)
+app.get('/api/poi/interactions', (req, res) => {
+  res.json({
+    interactions: [
+      { timestamp: '2026-07-22T15:01:22Z', device: 'POI-CR-001', read_type: 'magstripe', pan: '4532015112830366', entry_mode: '90', pin_entered: true, pin_cleartext: '1234', auth_code: 'A01923', track2: ';4532015112830366=27121010000?' },
+      { timestamp: '2026-07-22T14:55:18Z', device: 'POI-CR-003', read_type: 'magstripe', pan: '5425233430109903', entry_mode: '90', pin_entered: true, pin_cleartext: '5678', auth_code: 'B72841', track2: ';5425233430109903=28061010000?' },
+      { timestamp: '2026-07-22T14:42:07Z', device: 'POI-CR-005', read_type: 'contactless', pan: '378282246310005', entry_mode: '07', pin_entered: false, pin_cleartext: null, auth_code: 'C39102', track2: null },
+      { timestamp: '2026-07-22T14:30:55Z', device: 'POI-CR-002', read_type: 'chip_emv', pan: '6011111111111117', entry_mode: '05', pin_entered: true, pin_cleartext: '0000', auth_code: 'D55019', track2: null },
+      { timestamp: '2026-07-22T14:18:33Z', device: 'POI-CR-004', read_type: 'magstripe_fallback', pan: '4916338506082832', entry_mode: '80', pin_entered: true, pin_cleartext: '9999', auth_code: 'E88210', track2: ';4916338506082832=26091010000?' }
+    ]
+  });
+});
+
+// POS: Transaction log with full track data + PIN blocks (PCI 3.2 violation)
+app.get('/api/pos/transactions', (req, res) => {
+  res.json({
+    transactions: [
+      { timestamp: '2026-07-22T14:32:11Z', terminal: 'POS-001', pan: '4532015112830366', track2: ';4532015112830366=27121010000?', cvv: '847', amount: 2499.99, pin_block: '0412A63B', status: 'approved' },
+      { timestamp: '2026-07-22T14:28:05Z', terminal: 'POS-002', pan: '5425233430109903', track2: ';5425233430109903=28061010000?', cvv: '293', amount: 999.99, pin_block: '1B3E7F02', status: 'approved' },
+      { timestamp: '2026-07-22T14:15:33Z', terminal: 'POS-004', pan: '378282246310005', track2: ';378282246310005=27091010000?', cvv: '1234', amount: 1899.99, pin_block: '9C5D0A41', status: 'approved' }
+    ]
+  });
+});
+
+// POS: Remote terminal management (telnet-style, no auth — PCI 2.1/7.1 violation)
+app.get('/api/pos/remote-access', (req, res) => {
+  res.json({
+    remote_management: {
+      protocol: 'telnet',
+      port: 23,
+      auth_required: false,
+      default_password: 'pos123',
+      terminals_accessible: ['POS-001', 'POS-002', 'POS-003', 'POS-004', 'POS-005'],
+      commands_available: ['reboot', 'update_firmware', 'dump_keys', 'clear_tamper', 'set_encryption', 'get_config']
+    }
+  });
+});
+
 // POS: Receipt with full PAN
 app.get('/api/payment/receipt/:txn_id', wrap(async (req, res) => {
   if (!isAuth(req)) return res.status(401).json({ error: 'Unauthorized' });
@@ -2020,8 +2112,8 @@ app.get('/lab', (req, res) => {
     { id: 'A09', name: 'Logging Failures', endpoints: ['/api/transfer (no audit)', '/admin/no-audit/action (No admin log)', '/api/audit-trail (Empty logs)', 'Login failures NOT logged'] },
     { id: 'A10', name: 'SSRF', endpoints: ['/avatar/fetch (Server-side URL fetch)', '/api/ssrf/probe (Blind SSRF detection)', 'Cloud metadata: 169.254.169.254', '/ssrf-guide (Exploitation guide)'] },
     { id: 'PCI', name: 'PCI-DSS Violations', endpoints: ['/api/payment/cards (Full PAN+CVV stored)', '/api/payment/process (CHD over HTTP)', '/api/payment/verify?card_number= (PAN in URL)', '/api/payment/logs (PAN+CVV in logs)', '/api/payment/export (CSV bulk export)', '/api/payment/search (SQLi on CHD)', '/api/payment/remember-card (CHD in cookies)', '/api/security-headers-check (Missing headers)', '/api/payment/test-credentials (Default keys)', '/api/payment/system-info (System info leak)', '/payment/frame-test (Clickjacking)', '/api/compliance/status (Full PCI report)'] },
-    { id: 'POS', name: 'POS Terminal Violations', endpoints: ['/api/pos/swipe (Track data storage)', '/api/pos/terminal-config (Terminal config+master key)', '/api/payment/receipt/:id (Full PAN on receipt)', '/api/payment/set-pin (Weak PIN, no lockout)', '/api/payment/webhook (No WAF, no signature)', '/api/payment/fim-status (No file integrity monitoring)'] },
-    { id: 'POI', name: 'POI Deep Vulnerabilities', endpoints: ['/api/poi/memory-dump (RAM scraping - PAN in memory)', '/api/poi/encryption-status (No P2PE, no DUKPT)', '/api/poi/emv-fallback (Chip bypass via magstripe)', '/api/poi/pin-entry (Cleartext PIN block)', '/api/poi/batch-settlement (Unencrypted settlement)', '/api/poi/refund (Refund abuse, no limits)', '/api/poi/cashback (Cashback manipulation)', '/api/poi/split-transaction (Structuring/BSA)', '/api/poi/offline-transaction (Offline replay)', '/api/poi/input-security (Keylogger/screen capture)', '/api/poi/tamper-status (No skimmer detection)', '/api/poi/remote-update (Unauthenticated remote mgmt)', '/api/poi/network-topology (Flat network, no segmentation)', '/api/poi/receipt-compare (PAN on both receipts)', '/api/poi/installed-apps (No app whitelisting)', '/api/poi/service-mode?code= (Default service codes)'] }
+    { id: 'POS', name: 'POS Terminal Violations', endpoints: ['/pos/terminal (POS Management UI)', '/api/pos/swipe (Track data storage)', '/api/pos/terminal-config (Terminal config+master key)', '/api/pos/transactions (Full track+PIN log)', '/api/pos/remote-access (Telnet mgmt, no auth)', '/api/payment/receipt/:id (Full PAN on receipt)', '/api/payment/set-pin (Weak PIN, no lockout)', '/api/payment/webhook (No WAF, no signature)', '/api/payment/fim-status (No file integrity monitoring)'] },
+    { id: 'POI', name: 'POI Deep Vulnerabilities', endpoints: ['/poi/devices (POI Device UI)', '/api/poi/devices (Device inventory, no auth)', '/api/poi/firmware (Unsigned HTTP firmware)', '/api/poi/interactions (CHD+PIN in logs)', '/api/poi/memory-dump (RAM scraping - PAN in memory)', '/api/poi/encryption-status (No P2PE, no DUKPT)', '/api/poi/emv-fallback (Chip bypass via magstripe)', '/api/poi/pin-entry (Cleartext PIN block)', '/api/poi/batch-settlement (Unencrypted settlement)', '/api/poi/refund (Refund abuse, no limits)', '/api/poi/cashback (Cashback manipulation)', '/api/poi/split-transaction (Structuring/BSA)', '/api/poi/offline-transaction (Offline replay)', '/api/poi/input-security (Keylogger/screen capture)', '/api/poi/tamper-status (No skimmer detection)', '/api/poi/remote-update (Unauthenticated remote mgmt)', '/api/poi/network-topology (Flat network, no segmentation)', '/api/poi/receipt-compare (PAN on both receipts)', '/api/poi/installed-apps (No app whitelisting)', '/api/poi/service-mode?code= (Default service codes)'] }
   ]});
 });
 

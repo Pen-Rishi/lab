@@ -1,0 +1,268 @@
+<div class="container" style="max-width:900px;margin:0 auto;padding:40px 20px;">
+  <h2>🖥️ POS Terminal Management</h2>
+  <p class="text-muted">Point of Sale Terminal Fleet — Avengers Armory Retail Division</p>
+
+  <!-- POS Software Version Banner -->
+  <div style="background:rgba(226,54,54,0.08);border:1px solid rgba(226,54,54,0.3);border-radius:8px;padding:15px;margin-bottom:20px;">
+    <strong style="color:#e23636;">⚠️ System Notice:</strong>
+    <span style="font-size:0.9rem;">POS Software: <code>ArmoryPOS v2.1.0</code> (Build 2019-03-15) — <strong>End of Support: 2021-06-30</strong></span>
+  </div>
+
+  <!-- Terminal Fleet Status -->
+  <div style="background:var(--dark-2);padding:25px;border-radius:8px;border:1px solid var(--border);margin-bottom:20px;">
+    <h3>📡 Active Terminals</h3>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:0.85rem;margin-top:10px;">
+        <thead>
+          <tr style="border-bottom:2px solid var(--border);text-align:left;">
+            <th style="padding:10px;">Terminal ID</th>
+            <th style="padding:10px;">Location</th>
+            <th style="padding:10px;">Model</th>
+            <th style="padding:10px;">Firmware</th>
+            <th style="padding:10px;">Encryption</th>
+            <th style="padding:10px;">Status</th>
+            <th style="padding:10px;">Last Key Rotation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px;font-family:monospace;">POS-001</td>
+            <td style="padding:10px;">Avengers Tower Lobby</td>
+            <td style="padding:10px;">VeriFone VX520</td>
+            <td style="padding:10px;"><span style="background:rgba(226,54,54,0.2);padding:2px 8px;border-radius:4px;color:#e23636;font-weight:bold;">v2.1.0 (EOL)</span></td>
+            <td style="padding:10px;"><span style="color:#e23636;">❌ None</span></td>
+            <td style="padding:10px;"><span style="color:#2ecc71;">● Active</span></td>
+            <td style="padding:10px;color:#e23636;">Never</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px;font-family:monospace;">POS-002</td>
+            <td style="padding:10px;">Wakanda Branch</td>
+            <td style="padding:10px;">Ingenico iCT250</td>
+            <td style="padding:10px;"><span style="background:rgba(226,54,54,0.2);padding:2px 8px;border-radius:4px;color:#e23636;font-weight:bold;">v1.8.3 (EOL)</span></td>
+            <td style="padding:10px;"><span style="color:#e67e22;">⚠️ DES (weak)</span></td>
+            <td style="padding:10px;"><span style="color:#2ecc71;">● Active</span></td>
+            <td style="padding:10px;color:#e67e22;">2024-01-15</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px;font-family:monospace;">POS-003</td>
+            <td style="padding:10px;">Asgard Gift Shop</td>
+            <td style="padding:10px;">PAX S300</td>
+            <td style="padding:10px;"><span style="background:rgba(226,54,54,0.2);padding:2px 8px;border-radius:4px;color:#e23636;font-weight:bold;">v1.5.0 (EOL)</span></td>
+            <td style="padding:10px;"><span style="color:#e23636;">❌ None</span></td>
+            <td style="padding:10px;"><span style="color:#e67e22;">⚙️ Maintenance</span></td>
+            <td style="padding:10px;color:#e23636;">Never</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px;font-family:monospace;">POS-004</td>
+            <td style="padding:10px;">Stark Industries Cafe</td>
+            <td style="padding:10px;">VeriFone VX680</td>
+            <td style="padding:10px;"><span style="background:rgba(226,54,54,0.2);padding:2px 8px;border-radius:4px;color:#e23636;font-weight:bold;">v1.2.0 (EOL)</span></td>
+            <td style="padding:10px;"><span style="color:#e23636;">❌ None</span></td>
+            <td style="padding:10px;"><span style="color:#2ecc71;">● Active</span></td>
+            <td style="padding:10px;color:#e23636;">Never</td>
+          </tr>
+          <tr>
+            <td style="padding:10px;font-family:monospace;">POS-005</td>
+            <td style="padding:10px;">S.H.I.E.L.D. Helicarrier</td>
+            <td style="padding:10px;">Ingenico iWL250</td>
+            <td style="padding:10px;"><span style="background:rgba(226,54,54,0.2);padding:2px 8px;border-radius:4px;color:#e23636;font-weight:bold;">v1.0.1 (EOL)</span></td>
+            <td style="padding:10px;"><span style="color:#e23636;">❌ SSL 3.0</span></td>
+            <td style="padding:10px;"><span style="color:#2ecc71;">● Active</span></td>
+            <td style="padding:10px;color:#e23636;">2022-06-01</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Card Swipe Simulator -->
+  <div style="background:var(--dark-2);padding:25px;border-radius:8px;border:1px solid var(--border);margin-bottom:20px;">
+    <h3>💳 Card Swipe Simulator</h3>
+    <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:15px;">Simulate a magstripe swipe or chip read. Track data is stored in plaintext (PCI 3.2 violation).</p>
+
+    <form id="swipeForm" style="display:flex;flex-direction:column;gap:12px;">
+      <div>
+        <label style="display:block;margin-bottom:5px;font-size:0.85rem;">Track 1 Data</label>
+        <input type="text" name="track1" class="form-input" style="width:100%;font-family:monospace;font-size:0.8rem;"
+          value="%B4532015112830366^FURY/NICK^2712101000000000000000000000000?"
+          placeholder="%B{PAN}^{NAME}^{EXPIRY}{SERVICE_CODE}...">
+      </div>
+      <div>
+        <label style="display:block;margin-bottom:5px;font-size:0.85rem;">Track 2 Data</label>
+        <input type="text" name="track2" class="form-input" style="width:100%;font-family:monospace;font-size:0.8rem;"
+          value=";4532015112830366=27121010000000000000?"
+          placeholder=";{PAN}={EXPIRY}{SERVICE_CODE}...">
+      </div>
+      <div>
+        <label style="display:block;margin-bottom:5px;font-size:0.85rem;">Terminal</label>
+        <select name="terminal_id" class="form-input" style="width:100%;">
+          <option value="POS-001">POS-001 — Avengers Tower Lobby (VX520)</option>
+          <option value="POS-002">POS-002 — Wakanda Branch (iCT250)</option>
+          <option value="POS-003">POS-003 — Asgard Gift Shop (S300)</option>
+          <option value="POS-004">POS-004 — Stark Industries Cafe (VX680)</option>
+          <option value="POS-005">POS-005 — S.H.I.E.L.D. Helicarrier (iWL250)</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-gold" style="padding:12px;">🔄 Process Swipe</button>
+    </form>
+
+    <div id="swipeResult" style="display:none;margin-top:15px;padding:15px;background:var(--dark-3);border-radius:8px;border:1px solid var(--border);">
+      <h4>Swipe Result:</h4>
+      <pre id="swipeData" style="font-size:0.8rem;overflow-x:auto;white-space:pre-wrap;"></pre>
+    </div>
+  </div>
+
+  <!-- POS Software Info -->
+  <div style="background:var(--dark-2);padding:25px;border-radius:8px;border:1px solid var(--border);margin-bottom:20px;">
+    <h3>📋 POS Software Inventory</h3>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:0.85rem;margin-top:10px;">
+        <thead>
+          <tr style="border-bottom:2px solid var(--border);text-align:left;">
+            <th style="padding:10px;">Component</th>
+            <th style="padding:10px;">Version</th>
+            <th style="padding:10px;">Release Date</th>
+            <th style="padding:10px;">EOL Date</th>
+            <th style="padding:10px;">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px;">ArmoryPOS Application</td>
+            <td style="padding:10px;font-family:monospace;">2.1.0</td>
+            <td style="padding:10px;">2019-03-15</td>
+            <td style="padding:10px;">2021-06-30</td>
+            <td style="padding:10px;color:#e23636;font-weight:bold;">❌ Unsupported</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px;">Payment Processing SDK</td>
+            <td style="padding:10px;font-family:monospace;">3.2.1</td>
+            <td style="padding:10px;">2018-11-20</td>
+            <td style="padding:10px;">2020-12-31</td>
+            <td style="padding:10px;color:#e23636;font-weight:bold;">❌ Unsupported</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px;">EMV Kernel</td>
+            <td style="padding:10px;font-family:monospace;">2.6</td>
+            <td style="padding:10px;">2017-06-01</td>
+            <td style="padding:10px;">2019-12-31</td>
+            <td style="padding:10px;color:#e23636;font-weight:bold;">❌ Unsupported</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px;">TLS Library (OpenSSL)</td>
+            <td style="padding:10px;font-family:monospace;">1.0.1e</td>
+            <td style="padding:10px;">2013-02-11</td>
+            <td style="padding:10px;">2015-12-31</td>
+            <td style="padding:10px;color:#e23636;font-weight:bold;">❌ Heartbleed-era</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px;">Operating System</td>
+            <td style="padding:10px;font-family:monospace;">Windows CE 6.0</td>
+            <td style="padding:10px;">2006-11-01</td>
+            <td style="padding:10px;">2018-10-09</td>
+            <td style="padding:10px;color:#e23636;font-weight:bold;">❌ Unsupported</td>
+          </tr>
+          <tr>
+            <td style="padding:10px;">PIN Entry Device (PED)</td>
+            <td style="padding:10px;font-family:monospace;">PCI PTS 3.x</td>
+            <td style="padding:10px;">2012-01-01</td>
+            <td style="padding:10px;">2017-04-30</td>
+            <td style="padding:10px;color:#e23636;font-weight:bold;">❌ Expired PTS</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Terminal Config (exposed) -->
+  <div style="background:var(--dark-2);padding:25px;border-radius:8px;border:1px solid var(--border);margin-bottom:20px;">
+    <h3>🔧 Terminal Configuration</h3>
+    <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:10px;">Master encryption keys and terminal secrets (PCI 3.5/3.6 violation — keys exposed)</p>
+    <pre style="background:var(--dark-3);padding:15px;border-radius:8px;font-size:0.8rem;overflow-x:auto;">{
+  "master_key": "DEADBEEF01234567DEADBEEF01234567",
+  "pin_encryption_key": "0123456789ABCDEF0123456789ABCDEF",
+  "mac_key": "FEDCBA9876543210FEDCBA9876543210",
+  "terminal_auth_token": "pos-auth-tk-2019-avengers-legacy",
+  "encryption_mode": "DES-ECB",
+  "key_injection_method": "manual_plaintext",
+  "last_key_rotation": "never",
+  "p2pe_enabled": false,
+  "tls_version": "SSL_3.0",
+  "certificate_validation": false
+}</pre>
+  </div>
+
+  <!-- Transaction Log (with full track data) -->
+  <div style="background:var(--dark-2);padding:25px;border-radius:8px;border:1px solid var(--border);">
+    <h3>📜 Recent POS Transactions</h3>
+    <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:10px;">Full track data retained post-authorization (PCI 3.2 violation)</p>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:0.8rem;margin-top:10px;">
+        <thead>
+          <tr style="border-bottom:2px solid var(--border);text-align:left;">
+            <th style="padding:8px;">Time</th>
+            <th style="padding:8px;">Terminal</th>
+            <th style="padding:8px;">PAN</th>
+            <th style="padding:8px;">Track 2</th>
+            <th style="padding:8px;">CVV</th>
+            <th style="padding:8px;">Amount</th>
+            <th style="padding:8px;">PIN Block</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px;">2026-07-22 14:32:11</td>
+            <td style="padding:8px;">POS-001</td>
+            <td style="padding:8px;font-family:monospace;">4532015112830366</td>
+            <td style="padding:8px;font-family:monospace;font-size:0.7rem;">;4532015112830366=27121010000?</td>
+            <td style="padding:8px;font-family:monospace;">847</td>
+            <td style="padding:8px;">$2,499.99</td>
+            <td style="padding:8px;font-family:monospace;">0412A63B</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px;">2026-07-22 14:28:05</td>
+            <td style="padding:8px;">POS-002</td>
+            <td style="padding:8px;font-family:monospace;">5425233430109903</td>
+            <td style="padding:8px;font-family:monospace;font-size:0.7rem;">;5425233430109903=28061010000?</td>
+            <td style="padding:8px;font-family:monospace;">293</td>
+            <td style="padding:8px;">$999.99</td>
+            <td style="padding:8px;font-family:monospace;">1B3E7F02</td>
+          </tr>
+          <tr>
+            <td style="padding:8px;">2026-07-22 14:15:33</td>
+            <td style="padding:8px;">POS-004</td>
+            <td style="padding:8px;font-family:monospace;">378282246310005</td>
+            <td style="padding:8px;font-family:monospace;font-size:0.7rem;">;378282246310005=27091010000?</td>
+            <td style="padding:8px;font-family:monospace;">1234</td>
+            <td style="padding:8px;">$1,899.99</td>
+            <td style="padding:8px;font-family:monospace;">9C5D0A41</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('swipeForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const form = new FormData(this);
+  try {
+    const res = await fetch('/api/pos/swipe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        track1: form.get('track1'),
+        track2: form.get('track2'),
+        terminal_id: form.get('terminal_id')
+      })
+    });
+    const data = await res.json();
+    document.getElementById('swipeData').textContent = JSON.stringify(data, null, 2);
+    document.getElementById('swipeResult').style.display = 'block';
+  } catch (err) {
+    document.getElementById('swipeData').textContent = 'Error: ' + err.message;
+    document.getElementById('swipeResult').style.display = 'block';
+  }
+});
+</script>

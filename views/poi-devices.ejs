@@ -1,0 +1,229 @@
+<div class="container" style="max-width:900px;margin:0 auto;padding:40px 20px;">
+  <h2>📟 POI Device Management</h2>
+  <p class="text-muted">Point of Interaction Devices — Card Readers, PIN Pads & Payment Terminals</p>
+
+  <!-- POI Firmware Alert -->
+  <div style="background:rgba(226,54,54,0.08);border:1px solid rgba(226,54,54,0.3);border-radius:8px;padding:15px;margin-bottom:20px;">
+    <strong style="color:#e23636;">⚠️ Critical Alert:</strong>
+    <span style="font-size:0.9rem;">Multiple POI devices running firmware past PCI PTS expiry. Immediate replacement required per PCI DSS 9.9.</span>
+  </div>
+
+  <!-- POI Device Fleet -->
+  <div style="background:var(--dark-2);padding:25px;border-radius:8px;border:1px solid var(--border);margin-bottom:20px;">
+    <h3>📱 Registered POI Devices</h3>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:0.82rem;margin-top:10px;">
+        <thead>
+          <tr style="border-bottom:2px solid var(--border);text-align:left;">
+            <th style="padding:10px;">Device ID</th>
+            <th style="padding:10px;">Model</th>
+            <th style="padding:10px;">Type</th>
+            <th style="padding:10px;">Firmware</th>
+            <th style="padding:10px;">PCI PTS</th>
+            <th style="padding:10px;">Location</th>
+            <th style="padding:10px;">Connection</th>
+            <th style="padding:10px;">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px;font-family:monospace;">POI-CR-001</td>
+            <td style="padding:10px;">VeriFone MX 915</td>
+            <td style="padding:10px;">PIN Pad</td>
+            <td style="padding:10px;"><span style="background:rgba(226,54,54,0.2);padding:2px 8px;border-radius:4px;color:#e23636;font-weight:bold;">v3.1.2 (2016)</span></td>
+            <td style="padding:10px;color:#e23636;font-weight:bold;">PTS 3.x — Expired 2017</td>
+            <td style="padding:10px;">Tower Lobby Register 1</td>
+            <td style="padding:10px;"><span style="color:#e23636;">USB (unencrypted)</span></td>
+            <td style="padding:10px;"><span style="color:#2ecc71;">● Active</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px;font-family:monospace;">POI-CR-002</td>
+            <td style="padding:10px;">Ingenico iPP320</td>
+            <td style="padding:10px;">PIN Pad</td>
+            <td style="padding:10px;"><span style="background:rgba(226,54,54,0.2);padding:2px 8px;border-radius:4px;color:#e23636;font-weight:bold;">v2.8.0 (2014)</span></td>
+            <td style="padding:10px;color:#e23636;font-weight:bold;">PTS 2.x — Expired 2014</td>
+            <td style="padding:10px;">Wakanda Register 1</td>
+            <td style="padding:10px;"><span style="color:#e23636;">Serial RS-232</span></td>
+            <td style="padding:10px;"><span style="color:#2ecc71;">● Active</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px;font-family:monospace;">POI-CR-003</td>
+            <td style="padding:10px;">Magtek Dynamag</td>
+            <td style="padding:10px;">Magstripe Reader</td>
+            <td style="padding:10px;"><span style="background:rgba(226,54,54,0.2);padding:2px 8px;border-radius:4px;color:#e23636;font-weight:bold;">v1.04 (2012)</span></td>
+            <td style="padding:10px;color:#e23636;font-weight:bold;">Not PTS Listed</td>
+            <td style="padding:10px;">Asgard Gift Shop</td>
+            <td style="padding:10px;"><span style="color:#e23636;">USB HID (cleartext)</span></td>
+            <td style="padding:10px;"><span style="color:#2ecc71;">● Active</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px;font-family:monospace;">POI-CR-004</td>
+            <td style="padding:10px;">ID TECH Augusta</td>
+            <td style="padding:10px;">EMV + Magstripe</td>
+            <td style="padding:10px;"><span style="background:rgba(226,54,54,0.2);padding:2px 8px;border-radius:4px;color:#e23636;font-weight:bold;">v1.00.08 (2015)</span></td>
+            <td style="padding:10px;color:#e23636;font-weight:bold;">PTS 3.x — Expired 2017</td>
+            <td style="padding:10px;">Stark Cafe</td>
+            <td style="padding:10px;"><span style="color:#e67e22;">USB (partial SRED)</span></td>
+            <td style="padding:10px;"><span style="color:#e67e22;">⚙️ Maintenance</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px;font-family:monospace;">POI-CR-005</td>
+            <td style="padding:10px;">PAX SP30</td>
+            <td style="padding:10px;">PIN Pad + NFC</td>
+            <td style="padding:10px;"><span style="background:rgba(226,54,54,0.2);padding:2px 8px;border-radius:4px;color:#e23636;font-weight:bold;">v7.1.2 (2018)</span></td>
+            <td style="padding:10px;color:#e23636;font-weight:bold;">PTS 4.x — Expired 2024</td>
+            <td style="padding:10px;">S.H.I.E.L.D. Helicarrier</td>
+            <td style="padding:10px;"><span style="color:#e67e22;">Ethernet (TLS 1.0)</span></td>
+            <td style="padding:10px;"><span style="color:#2ecc71;">● Active</span></td>
+          </tr>
+          <tr>
+            <td style="padding:10px;font-family:monospace;">POI-CR-006</td>
+            <td style="padding:10px;">VeriFone VX 805</td>
+            <td style="padding:10px;">PIN Pad</td>
+            <td style="padding:10px;"><span style="background:rgba(226,54,54,0.2);padding:2px 8px;border-radius:4px;color:#e23636;font-weight:bold;">v2.3.0 (2013)</span></td>
+            <td style="padding:10px;color:#e23636;font-weight:bold;">PTS 3.x — Expired 2017</td>
+            <td style="padding:10px;">Xavier School Branch</td>
+            <td style="padding:10px;"><span style="color:#e23636;">Serial RS-232</span></td>
+            <td style="padding:10px;"><span style="color:#2ecc71;">● Active</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- POI Security Configuration -->
+  <div style="background:var(--dark-2);padding:25px;border-radius:8px;border:1px solid var(--border);margin-bottom:20px;">
+    <h3>🔐 POI Security Configuration</h3>
+    <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:10px;">Device security settings (PCI DSS 9.9 — POI device tamper protection)</p>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:15px;margin-top:15px;">
+      <div style="background:var(--dark-3);padding:15px;border-radius:8px;border:1px solid var(--border);">
+        <h4 style="margin-bottom:10px;font-size:0.9rem;">🔒 Encryption</h4>
+        <div style="font-size:0.85rem;">
+          <div style="display:flex;justify-content:space-between;padding:5px 0;"><span>P2PE Encryption:</span><span style="color:#e23636;font-weight:bold;">Disabled</span></div>
+          <div style="display:flex;justify-content:space-between;padding:5px 0;"><span>SRED Compliance:</span><span style="color:#e23636;font-weight:bold;">Non-Compliant</span></div>
+          <div style="display:flex;justify-content:space-between;padding:5px 0;"><span>DUKPT Key Mgmt:</span><span style="color:#e23636;font-weight:bold;">Not Configured</span></div>
+          <div style="display:flex;justify-content:space-between;padding:5px 0;"><span>PIN Block Format:</span><span style="color:#e67e22;">ISO 0 (legacy)</span></div>
+          <div style="display:flex;justify-content:space-between;padding:5px 0;"><span>Data-at-Rest:</span><span style="color:#e23636;font-weight:bold;">Plaintext</span></div>
+        </div>
+      </div>
+
+      <div style="background:var(--dark-3);padding:15px;border-radius:8px;border:1px solid var(--border);">
+        <h4 style="margin-bottom:10px;font-size:0.9rem;">🛡️ Tamper Protection</h4>
+        <div style="font-size:0.85rem;">
+          <div style="display:flex;justify-content:space-between;padding:5px 0;"><span>Tamper Detection:</span><span style="color:#e23636;font-weight:bold;">Disabled</span></div>
+          <div style="display:flex;justify-content:space-between;padding:5px 0;"><span>Inspection Schedule:</span><span style="color:#e23636;font-weight:bold;">None</span></div>
+          <div style="display:flex;justify-content:space-between;padding:5px 0;"><span>Last Inspection:</span><span style="color:#e23636;font-weight:bold;">Never</span></div>
+          <div style="display:flex;justify-content:space-between;padding:5px 0;"><span>Device Photos:</span><span style="color:#e23636;font-weight:bold;">Not Recorded</span></div>
+          <div style="display:flex;justify-content:space-between;padding:5px 0;"><span>Serial # Tracking:</span><span style="color:#e67e22;">Partial</span></div>
+        </div>
+      </div>
+
+      <div style="background:var(--dark-3);padding:15px;border-radius:8px;border:1px solid var(--border);">
+        <h4 style="margin-bottom:10px;font-size:0.9rem;">📡 Network Security</h4>
+        <div style="font-size:0.85rem;">
+          <div style="display:flex;justify-content:space-between;padding:5px 0;"><span>TLS Version:</span><span style="color:#e23636;font-weight:bold;">SSL 3.0 / TLS 1.0</span></div>
+          <div style="display:flex;justify-content:space-between;padding:5px 0;"><span>Cert Validation:</span><span style="color:#e23636;font-weight:bold;">Disabled</span></div>
+          <div style="display:flex;justify-content:space-between;padding:5px 0;"><span>Network Segment:</span><span style="color:#e23636;font-weight:bold;">Flat (no segmentation)</span></div>
+          <div style="display:flex;justify-content:space-between;padding:5px 0;"><span>Remote Mgmt:</span><span style="color:#e67e22;">Telnet (port 23)</span></div>
+          <div style="display:flex;justify-content:space-between;padding:5px 0;"><span>Firmware Update:</span><span style="color:#e23636;font-weight:bold;">HTTP (unsigned)</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POI Device Interaction Log -->
+  <div style="background:var(--dark-2);padding:25px;border-radius:8px;border:1px solid var(--border);margin-bottom:20px;">
+    <h3>📊 POI Interaction Log</h3>
+    <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:10px;">Recent card interactions across all POI devices (CHD logged in violation of PCI 3.1/3.2)</p>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:0.8rem;margin-top:10px;">
+        <thead>
+          <tr style="border-bottom:2px solid var(--border);text-align:left;">
+            <th style="padding:8px;">Timestamp</th>
+            <th style="padding:8px;">Device</th>
+            <th style="padding:8px;">Read Type</th>
+            <th style="padding:8px;">PAN</th>
+            <th style="padding:8px;">Entry Mode</th>
+            <th style="padding:8px;">PIN Entered</th>
+            <th style="padding:8px;">Auth Code</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px;">2026-07-22 15:01:22</td>
+            <td style="padding:8px;">POI-CR-001</td>
+            <td style="padding:8px;color:#e67e22;">Magstripe</td>
+            <td style="padding:8px;font-family:monospace;">4532015112830366</td>
+            <td style="padding:8px;">Swipe (90)</td>
+            <td style="padding:8px;color:#e23636;font-family:monospace;">Yes: 1234</td>
+            <td style="padding:8px;font-family:monospace;">A01923</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px;">2026-07-22 14:55:18</td>
+            <td style="padding:8px;">POI-CR-003</td>
+            <td style="padding:8px;color:#e67e22;">Magstripe</td>
+            <td style="padding:8px;font-family:monospace;">5425233430109903</td>
+            <td style="padding:8px;">Swipe (90)</td>
+            <td style="padding:8px;color:#e23636;font-family:monospace;">Yes: 5678</td>
+            <td style="padding:8px;font-family:monospace;">B72841</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px;">2026-07-22 14:42:07</td>
+            <td style="padding:8px;">POI-CR-005</td>
+            <td style="padding:8px;color:#3498db;">Contactless</td>
+            <td style="padding:8px;font-family:monospace;">378282246310005</td>
+            <td style="padding:8px;">Tap (07)</td>
+            <td style="padding:8px;">No</td>
+            <td style="padding:8px;font-family:monospace;">C39102</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px;">2026-07-22 14:30:55</td>
+            <td style="padding:8px;">POI-CR-002</td>
+            <td style="padding:8px;color:#2ecc71;">Chip (EMV)</td>
+            <td style="padding:8px;font-family:monospace;">6011111111111117</td>
+            <td style="padding:8px;">Insert (05)</td>
+            <td style="padding:8px;color:#e23636;font-family:monospace;">Yes: 0000</td>
+            <td style="padding:8px;font-family:monospace;">D55019</td>
+          </tr>
+          <tr>
+            <td style="padding:8px;">2026-07-22 14:18:33</td>
+            <td style="padding:8px;">POI-CR-004</td>
+            <td style="padding:8px;color:#e67e22;">Magstripe Fallback</td>
+            <td style="padding:8px;font-family:monospace;">4916338506082832</td>
+            <td style="padding:8px;">Swipe (80)</td>
+            <td style="padding:8px;color:#e23636;font-family:monospace;">Yes: 9999</td>
+            <td style="padding:8px;font-family:monospace;">E88210</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- POI Firmware Download (insecure) -->
+  <div style="background:var(--dark-2);padding:25px;border-radius:8px;border:1px solid var(--border);">
+    <h3>⬇️ Firmware Management</h3>
+    <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:15px;">Device firmware updates (PCI 6.3 violation — unsigned, over HTTP)</p>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(250px, 1fr));gap:12px;">
+      <div style="background:var(--dark-3);padding:15px;border-radius:8px;border:1px solid var(--border);">
+        <strong style="font-size:0.85rem;">VeriFone MX 915 / VX 805</strong>
+        <p style="font-size:0.8rem;color:var(--text-muted);margin:5px 0;">Version: 3.1.2 → 3.1.2 (no update available)</p>
+        <code style="font-size:0.7rem;color:#e23636;display:block;margin:5px 0;">http://firmware.armory-pos.internal/vx-3.1.2.bin</code>
+        <span style="font-size:0.7rem;color:#e23636;">⚠️ HTTP download, no signature verification</span>
+      </div>
+      <div style="background:var(--dark-3);padding:15px;border-radius:8px;border:1px solid var(--border);">
+        <strong style="font-size:0.85rem;">Ingenico iPP320</strong>
+        <p style="font-size:0.8rem;color:var(--text-muted);margin:5px 0;">Version: 2.8.0 → 2.8.0 (no update available)</p>
+        <code style="font-size:0.7rem;color:#e23636;display:block;margin:5px 0;">http://firmware.armory-pos.internal/ipp-2.8.0.bin</code>
+        <span style="font-size:0.7rem;color:#e23636;">⚠️ HTTP download, no signature verification</span>
+      </div>
+      <div style="background:var(--dark-3);padding:15px;border-radius:8px;border:1px solid var(--border);">
+        <strong style="font-size:0.85rem;">Magtek Dynamag</strong>
+        <p style="font-size:0.8rem;color:var(--text-muted);margin:5px 0;">Version: 1.04 (end-of-life — no firmware updates)</p>
+        <code style="font-size:0.7rem;color:#e23636;display:block;margin:5px 0;">Device discontinued. No patches available.</code>
+        <span style="font-size:0.7rem;color:#e23636;">⚠️ Replace device immediately</span>
+      </div>
+    </div>
+  </div>
+</div>
